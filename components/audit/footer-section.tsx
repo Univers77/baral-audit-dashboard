@@ -2,6 +2,7 @@
 
 import { references, site, totalFindings } from '@/lib/audit-data'
 import { CosmicButton, Reveal, SectionHeader, TiltCard } from '@/components/cosmos/primitives'
+import { BaralPlanet } from '@/components/audit/baral-planet'
 
 export function FooterSection() {
   return (
@@ -96,58 +97,73 @@ export function FooterSection() {
         </div>
       </section>
 
-      {/* Baral globe / brand closing */}
-      <section className="relative border-t border-border/60 py-20 overflow-hidden">
+      {/* Baral planet brand closing */}
+      <section className="relative border-t border-border/60 py-24 overflow-hidden">
+        {/* Deep space background wash */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"
           style={{
-            background: 'radial-gradient(ellipse 80% 60% at 50% 100%, oklch(0.55 0.22 296 / 0.18), transparent 70%)',
+            background:
+              'radial-gradient(ellipse 70% 55% at 50% 108%, rgba(109,40,217,0.22) 0%, rgba(76,29,149,0.08) 55%, transparent 80%)',
           }}
         />
-        <div className="relative mx-auto max-w-4xl px-6 flex flex-col items-center gap-8">
-          {/* Globe SVG */}
-          <div
-            aria-hidden="true"
-            className="animate-slow-spin"
-            style={{ animationDuration: '60s' }}
-          >
-            <svg viewBox="0 0 160 160" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <radialGradient id="globeGrad" cx="38%" cy="32%" r="70%">
-                  <stop offset="0%" stopColor="#a78bfa" />
-                  <stop offset="50%" stopColor="#7C3AED" />
-                  <stop offset="100%" stopColor="#3b0d8a" />
-                </radialGradient>
-                <filter id="globeGlow">
-                  <feGaussianBlur stdDeviation="6" result="blur" />
-                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                </filter>
-              </defs>
-              {/* Globe body */}
-              <circle cx="80" cy="80" r="72" fill="url(#globeGrad)" opacity="0.95" />
-              <circle cx="80" cy="80" r="72" fill="none" stroke="#a78bfa" strokeWidth="1.5" opacity="0.4" />
-              {/* Latitude lines */}
-              <ellipse cx="80" cy="80" rx="72" ry="22" fill="none" stroke="#c4b5fd" strokeWidth="1" opacity="0.35" />
-              <ellipse cx="80" cy="80" rx="72" ry="46" fill="none" stroke="#c4b5fd" strokeWidth="0.8" opacity="0.25" />
-              <ellipse cx="80" cy="56" rx="52" ry="16" fill="none" stroke="#c4b5fd" strokeWidth="0.7" opacity="0.2" />
-              <ellipse cx="80" cy="104" rx="52" ry="16" fill="none" stroke="#c4b5fd" strokeWidth="0.7" opacity="0.2" />
-              {/* Longitude lines */}
-              <path d="M80 8 Q120 80 80 152 Q40 80 80 8" fill="none" stroke="#c4b5fd" strokeWidth="1" opacity="0.3" />
-              <path d="M80 8 Q140 80 80 152" fill="none" stroke="#c4b5fd" strokeWidth="0.8" opacity="0.2" />
-              <path d="M80 8 Q20 80 80 152" fill="none" stroke="#c4b5fd" strokeWidth="0.8" opacity="0.2" />
-              {/* Horizontal equator */}
-              <line x1="8" y1="80" x2="152" y2="80" stroke="#c4b5fd" strokeWidth="1" opacity="0.3" />
-              {/* Highlight */}
-              <circle cx="58" cy="52" r="18" fill="white" opacity="0.08" />
-            </svg>
+        {/* Star field micro-dots */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+          {Array.from({ length: 28 }, (_, i) => (
+            <span
+              key={i}
+              className="absolute rounded-full animate-twinkle"
+              style={{
+                width: i % 3 === 0 ? 2 : 1,
+                height: i % 3 === 0 ? 2 : 1,
+                background: '#c4b5fd',
+                left: `${(i * 37 + 11) % 97}%`,
+                top: `${(i * 53 + 7) % 88}%`,
+                opacity: 0.2 + (i % 5) * 0.1,
+                animationDelay: `${(i * 0.43) % 4}s`,
+                animationDuration: `${3 + (i % 3)}s`,
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="relative mx-auto max-w-4xl px-6 flex flex-col items-center gap-6">
+          {/* Canvas planet */}
+          <div className="relative">
+            {/* Soft shadow beneath planet */}
+            <div
+              aria-hidden="true"
+              className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-40 h-8 rounded-full blur-2xl"
+              style={{ background: 'rgba(109,40,217,0.35)' }}
+            />
+            <BaralPlanet size={260} />
           </div>
 
-          <div className="text-center flex flex-col items-center gap-3">
-            <img src="/baral-logo.svg" alt="Baral Estrategia Integral Creativa" width="180" height="54" />
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground mt-1">
-              Diagnóstico generado por Master Web Auditor v2.0
-            </p>
+          {/* Logo + tagline */}
+          <div className="text-center flex flex-col items-center gap-4 mt-2">
+            <img
+              src="/baral-logo.svg"
+              alt="Baral — Estrategia Integral Creativa"
+              width="200"
+              height="60"
+              style={{ filter: 'drop-shadow(0 0 18px rgba(139,92,246,0.45))' }}
+            />
+            <div className="flex items-center gap-3">
+              <span
+                aria-hidden
+                className="h-px w-10 opacity-30"
+                style={{ background: 'var(--quasar)' }}
+              />
+              <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+                Diagnóstico · Master Web Auditor v2.0 · AUDITOR-X
+              </p>
+              <span
+                aria-hidden
+                className="h-px w-10 opacity-30"
+                style={{ background: 'var(--quasar)' }}
+              />
+            </div>
           </div>
         </div>
       </section>

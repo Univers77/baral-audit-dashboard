@@ -1,8 +1,7 @@
 'use client'
 
-import { CosmicButton } from '@/components/cosmos/primitives'
-import { counts, opportunityCount, scores, site, tech, totalFindings } from '@/lib/audit-data'
-import { Crosshair, TriangleAlert } from 'lucide-react'
+import { auditxScores, counts, opportunityCount, scores, site, tech, totalFindings } from '@/lib/audit-data'
+import { TriangleAlert } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 const SATELLITES = [
@@ -15,11 +14,7 @@ const SATELLITES = [
 const RING_RADII = [30, 40, 49] // % of container
 
 export function Hero() {
-  const [domain, setDomain] = useState(site.url)
-  const [input, setInput] = useState('')
-  const [runId, setRunId] = useState(0)
-  const [scanning, setScanning] = useState(false)
-  const [progress, setProgress] = useState(0) // 0..1 animation driver
+  const [progress, setProgress] = useState(0) // 0..1 entry animation
 
   useEffect(() => {
     let raf = 0
@@ -29,21 +24,10 @@ export function Hero() {
       const p = Math.min(1, (now - start) / dur)
       setProgress(1 - Math.pow(1 - p, 3))
       if (p < 1) raf = requestAnimationFrame(tick)
-      else setScanning(false)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [runId])
-
-  const analyze = () => {
-    const v = input.trim()
-    if (!v) return
-    setDomain(v.replace(/^https?:\/\//, '').replace(/\/$/, ''))
-    setInput('')
-    setScanning(true)
-    setProgress(0)
-    setRunId((n) => n + 1)
-  }
+  }, [])
 
   const overall = Math.round(scores.overall * progress)
   const R = 132
@@ -52,6 +36,8 @@ export function Hero() {
   return (
     <section id="hero" className="relative px-5 pt-32 pb-20 sm:px-8 sm:pt-40 sm:pb-28">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-7 text-center">
+
+        {/* Locked audit badge — NOT a scanner */}
         <div
           className="glass text-muted-foreground flex items-center gap-2.5 rounded-full px-4 py-1.5 font-mono text-[11px] tracking-[0.16em]"
           style={{ border: '1px solid var(--border)' }}
@@ -64,7 +50,7 @@ export function Hero() {
             />
             <span className="relative size-1.5 rounded-full" style={{ background: 'var(--nova)' }} />
           </span>
-          DIAGNÓSTICO INTEGRAL · {domain.toUpperCase()} · {site.date.toUpperCase()}
+          DIAGNÓSTICO INTEGRAL · {site.url.toUpperCase()} · {site.date.toUpperCase()}
         </div>
 
         <h1 className="font-display max-w-4xl text-[clamp(2.4rem,6.4vw,4.6rem)] leading-[0.98] font-semibold tracking-[-0.02em] text-balance">
@@ -79,28 +65,19 @@ export function Hero() {
           oportunidades latentes, contrastadas contra la competencia más cercana y peligrosa.
         </p>
 
-        {/* URL scanner */}
+        {/* Scope disclaimer */}
         <div
-          className="glass flex w-full max-w-md items-center gap-2 rounded-full p-1.5 pl-5"
-          style={{ border: '1px solid var(--border)' }}
+          className="flex items-center gap-2.5 rounded-2xl px-4 py-2.5 font-mono text-[11px]"
+          style={{
+            background: 'oklch(0.85 0.13 88 / 0.07)',
+            border: '1px solid oklch(0.85 0.13 88 / 0.25)',
+            color: 'oklch(0.85 0.13 88)',
+          }}
         >
-          <Crosshair aria-hidden className="text-muted-foreground/60 size-4 shrink-0" />
-          <label htmlFor="scan-url" className="sr-only">
-            Dominio a analizar
-          </label>
-          <input
-            id="scan-url"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) analyze()
-            }}
-            placeholder="https://tu-sitio.com"
-            className="placeholder:text-muted-foreground/50 min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none"
-          />
-          <CosmicButton onClick={analyze} className="shrink-0 px-5 py-2.5 text-[13px]">
-            {scanning ? 'Escaneando…' : 'Trazar órbita'}
-          </CosmicButton>
+          <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
+          <span>
+            Informe específico de <strong>{site.url}</strong> · {site.level} · {site.pagesAnalyzed} páginas analizadas
+          </span>
         </div>
 
         {/* ——— Orbital score system ——— */}
@@ -193,8 +170,7 @@ export function Hero() {
             <div
               className="absolute inset-[7%] rounded-full"
               style={{
-                background:
-                  'radial-gradient(circle at 35% 30%, oklch(0.32 0.06 288), oklch(0.15 0.03 278) 70%)',
+                background: 'radial-gradient(circle at 35% 30%, oklch(0.32 0.06 288), oklch(0.15 0.03 278) 70%)',
                 boxShadow: 'inset 0 0 60px oklch(0.62 0.24 300 / 0.3)',
               }}
             />
@@ -212,12 +188,43 @@ export function Hero() {
           </div>
         </div>
 
-        {/* tech badges */}
+        {/* AUDITOR-X tripartite scoring */}
+        <div
+          className="glass flex w-full max-w-lg flex-col gap-3 rounded-2xl px-5 py-4"
+          style={{ border: '1px solid oklch(0.8 0.16 305 / 0.25)' }}
+        >
+          <p className="font-mono text-[10px] tracking-[0.22em] text-muted-foreground/70">
+            AUDITOR-X · SCORING TRIPARTITO
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'HEALTH SCORE',   value: auditxScores.healthScore,         color: 'var(--pulsar)', note: 'Calidad técnica' },
+              { label: 'BUSINESS RISK',  value: auditxScores.businessRisk,        color: 'var(--solar)',  note: 'Riesgo activo' },
+              { label: 'EVIDENCE CONF.', value: auditxScores.evidenceConfidence,  color: 'var(--nova)',   note: 'Confianza auditoría' },
+            ].map((s) => (
+              <div key={s.label} className="flex flex-col items-center gap-1">
+                <span className="font-mono text-2xl font-bold tabular-nums leading-none" style={{ color: s.color }}>
+                  {s.value}
+                </span>
+                <span className="font-mono text-[8px] tracking-[0.16em] text-muted-foreground/60 text-center leading-tight">
+                  {s.label}
+                </span>
+                <span className="text-[10px] text-muted-foreground/50 text-center leading-tight">{s.note}</span>
+              </div>
+            ))}
+          </div>
+          <p className="font-mono text-[9px] text-muted-foreground/40 text-center">
+            Risk = Severity × Confidence × Scope × BusinessImpact · Nunca un solo promedio
+          </p>
+        </div>
+
+        {/* Tech stack — version only in label, update note as tooltip */}
         <ul className="flex flex-wrap justify-center gap-2">
           {tech.map((t) => (
             <li
               key={t.label}
               className="rounded-full px-3.5 py-1.5 font-mono text-[11px]"
+              title={t.note || undefined}
               style={{
                 background: t.crit ? 'oklch(0.72 0.2 15 / 0.1)' : 'oklch(0.24 0.045 280 / 0.5)',
                 border: `1px solid ${t.crit ? 'oklch(0.72 0.2 15 / 0.42)' : 'var(--border)'}`,

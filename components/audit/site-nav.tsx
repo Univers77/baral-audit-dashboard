@@ -79,10 +79,7 @@ export function SiteNav() {
           >
             B
           </span>
-          <span className="hidden sm:flex flex-col leading-none">
-            <span className="font-semibold text-[13px] tracking-wide">BARAL</span>
-            <span className="font-mono text-[9px] tracking-[0.18em]" style={{ color: 'var(--quasar)' }}>DIAGNÓSTICO WEB</span>
-          </span>
+          <span className="hidden sm:block font-semibold text-[13px] tracking-widest leading-none">BARAL</span>
         </button>
 
         <div className="glass hidden items-center gap-1 rounded-full p-1 md:flex" style={{ borderWidth: 1 }}>

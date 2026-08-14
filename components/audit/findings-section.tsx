@@ -1,7 +1,7 @@
 'use client'
 
 import { CosmicButton, Reveal, SectionHeader, TiltCard } from '@/components/cosmos/primitives'
-import { compactFindings, counts, findings, priorityMeta, type Priority } from '@/lib/audit-data'
+import { auditxStatusMeta, calcRisk, compactFindings, counts, findings, priorityMeta, type Priority } from '@/lib/audit-data'
 import { cn } from '@/lib/utils'
 import { ChevronDown, Search } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -236,7 +236,34 @@ export function FindingsSection({
                     </Panel>
                   </div>
 
-                  <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
+                  {/* AUDITOR-X metadata row */}
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <span
+                      className="rounded-full px-2.5 py-1 font-mono text-[10px] tracking-[0.1em]"
+                      style={{
+                        background: auditxStatusMeta[f.auditxStatus].bg,
+                        color: auditxStatusMeta[f.auditxStatus].color,
+                        border: `1px solid ${auditxStatusMeta[f.auditxStatus].color}55`,
+                      }}
+                    >
+                      {auditxStatusMeta[f.auditxStatus].label}
+                    </span>
+                    <span
+                      className="rounded-full px-2.5 py-1 font-mono text-[10px] tracking-[0.1em]"
+                      style={{ background: 'oklch(1 0 0 / 0.04)', border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}
+                    >
+                      {f.module}
+                    </span>
+                    <span
+                      className="rounded-full px-2.5 py-1 font-mono text-[10px] font-bold tracking-[0.1em]"
+                      title={`Risk = ${f.severity} × ${(f.confidence/100).toFixed(2)} × ${f.scope} × ${f.businessImpact}`}
+                      style={{ background: 'oklch(0.8 0.16 305 / 0.08)', border: '1px solid oklch(0.8 0.16 305 / 0.3)', color: 'oklch(0.88 0.14 195)' }}
+                    >
+                      RISK {calcRisk(f).toFixed(1)}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
                     <div className="flex items-center gap-2.5">
                       <span className="text-muted-foreground/70 font-mono text-[10px] tracking-[0.14em]">
                         CONFIANZA
