@@ -1,22 +1,30 @@
 'use client'
 
-import { auditxScores, counts, opportunityCount, scores, site, tech, totalFindings } from '@/lib/audit-data'
+import type { AuditResult } from '@/lib/scanner/types'
 import { TriangleAlert } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
-const SATELLITES = [
-  { key: 'performance', label: 'Performance', target: scores.performance, color: 'var(--pulsar)', ring: 0, angle: 0, dur: 34 },
-  { key: 'seo', label: 'SEO', target: scores.seo, color: 'var(--nova)', ring: 1, angle: 120, dur: 46 },
-  { key: 'a11y', label: 'Accesibilidad', target: scores.accessibility, color: 'var(--star)', ring: 2, angle: 210, dur: 58 },
-  { key: 'conversion', label: 'Conversión', target: scores.conversion, color: 'var(--quasar)', ring: 1, angle: 300, dur: 46 },
+const SATELLITE_CONFIG = [
+  { key: 'performance' as const, label: 'Performance', color: 'var(--pulsar)', ring: 0, angle: 0,   dur: 34 },
+  { key: 'seo'         as const, label: 'SEO',         color: 'var(--nova)',   ring: 1, angle: 120, dur: 46 },
+  { key: 'a11y'        as const, label: 'Accesibilidad', color: 'var(--star)', ring: 2, angle: 210, dur: 58 },
+  { key: 'conversion'  as const, label: 'Conversión',  color: 'var(--quasar)',ring: 1, angle: 300, dur: 46 },
 ] as const
 
-const RING_RADII = [30, 40, 49] // % of container
+const RING_RADII = [30, 40, 49]
 
-export function Hero() {
-  const [progress, setProgress] = useState(0) // 0..1 entry animation
+function formatDate(iso: string) {
+  try {
+    return new Date(iso).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' })
+  } catch { return iso }
+}
+
+export function Hero({ scanResult }: { scanResult: AuditResult | null }) {
+  const [progress, setProgress] = useState(0)
 
   useEffect(() => {
+    if (!scanResult) { setProgress(0); return }
+    setProgress(0)
     let raf = 0
     const start = performance.now()
     const dur = 1600
@@ -27,17 +35,65 @@ export function Hero() {
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [])
+  }, [scanResult])
 
-  const overall = Math.round(scores.overall * progress)
+  // ── Empty state ──────────────────────────────────────────────
+  if (!scanResult) {
+    return (
+      <section id="hero" className="relative px-5 pt-16 pb-10 sm:px-8 sm:pt-20 sm:pb-14">
+        <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 text-center py-10">
+          <div
+            className="glass text-muted-foreground flex items-center gap-2.5 rounded-full px-4 py-1.5 font-mono text-[11px] tracking-[0.16em]"
+            style={{ border: '1px solid var(--border)' }}
+          >
+            <span className="size-1.5 rounded-full" style={{ background: 'var(--muted-foreground)' }} />
+            AUDITOR-X · ESPERANDO ESCANEO
+          </div>
+          <h1 className="font-display max-w-3xl text-[clamp(2rem,5.5vw,4rem)] leading-[0.98] font-semibold tracking-[-0.02em] text-balance">
+            Escanea una URL para ver
+            <br />
+            <span className="text-gradient-quasar">el diagnóstico completo</span>
+            <span className="animate-caret text-primary">_</span>
+          </h1>
+          <p className="text-muted-foreground max-w-lg text-[16px] leading-relaxed text-pretty">
+            El análisis detecta rendimiento, SEO, accesibilidad, conversión, tech stack y hallazgos — todo desde la URL, en segundos.
+          </p>
+        </div>
+      </section>
+    )
+  }
+
+  // ── Derive data from scan result ─────────────────────────────
+  const scoreTargets = {
+    performance: scanResult.scores.performance,
+    seo:         scanResult.scores.seo,
+    a11y:        scanResult.scores.accessibility,
+    conversion:  scanResult.scores.conversion,
+  }
+
+  const overall = Math.round(scanResult.scores.overall * progress)
   const R = 132
   const CIRC = 2 * Math.PI * R
 
+  const totalFindings = scanResult.findings.length + scanResult.compactFindings.length
+  const p0Count = scanResult.findings.filter(f => f.priority === 'P0').length
+  const p1Count = scanResult.findings.filter(f => f.priority === 'P1').length
+  const opportunityCount =
+    scanResult.findings.filter(f => f.priority === 'P2' || f.priority === 'P3').length +
+    scanResult.compactFindings.filter(f => f.priority === 'P2' || f.priority === 'P3').length
+
+  const businessRisk = Math.min(99, p0Count * 20 + p1Count * 8 + 10)
+  const healthScore = scanResult.scores.overall
+  const evidenceConfidence =
+    scanResult.claudeEnrichment?.dataConfidence === 'ALTA' ? 92
+    : scanResult.claudeEnrichment?.dataConfidence === 'MEDIA' ? 75
+    : 65
+
   return (
-    <section id="hero" className="relative px-5 pt-32 pb-20 sm:px-8 sm:pt-40 sm:pb-28">
+    <section id="hero" className="relative px-5 pt-16 pb-10 sm:px-8 sm:pt-20 sm:pb-14">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-7 text-center">
 
-        {/* Locked audit badge — NOT a scanner */}
+        {/* Live scan badge */}
         <div
           className="glass text-muted-foreground flex items-center gap-2.5 rounded-full px-4 py-1.5 font-mono text-[11px] tracking-[0.16em]"
           style={{ border: '1px solid var(--border)' }}
@@ -50,7 +106,7 @@ export function Hero() {
             />
             <span className="relative size-1.5 rounded-full" style={{ background: 'var(--nova)' }} />
           </span>
-          DIAGNÓSTICO INTEGRAL · {site.url.toUpperCase()} · {site.date.toUpperCase()}
+          DIAGNÓSTICO EN VIVO · {scanResult.domain.toUpperCase()} · {formatDate(scanResult.scanDate).toUpperCase()}
         </div>
 
         <h1 className="font-display max-w-4xl text-[clamp(2.4rem,6.4vw,4.6rem)] leading-[0.98] font-semibold tracking-[-0.02em] text-balance">
@@ -61,8 +117,8 @@ export function Hero() {
         </h1>
 
         <p className="text-muted-foreground max-w-xl text-[17px] leading-relaxed text-pretty">
-          {totalFindings} hallazgos orbitando tu dominio · {counts.P0} supernovas críticas · {opportunityCount}{' '}
-          oportunidades latentes, contrastadas contra la competencia más cercana y peligrosa.
+          {totalFindings} hallazgos orbitando tu dominio · {p0Count} supernovas críticas · {opportunityCount}{' '}
+          oportunidades latentes detectadas automáticamente.
         </p>
 
         {/* Scope disclaimer */}
@@ -76,12 +132,12 @@ export function Hero() {
         >
           <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
           <span>
-            Informe específico de <strong>{site.url}</strong> · {site.level} · {site.pagesAnalyzed} páginas analizadas
+            Análisis automático de <strong>{scanResult.url}</strong> · AUDITOR-X STANDARD · Homepage analizada
           </span>
         </div>
 
         {/* ——— Orbital score system ——— */}
-        <div className="relative mt-6 aspect-square w-full max-w-[min(34rem,86vw)]">
+        <div className="relative mt-3 aspect-square w-full max-w-[min(28rem,86vw)]">
           {/* halo */}
           <div
             aria-hidden
@@ -107,8 +163,9 @@ export function Hero() {
           ))}
 
           {/* satellites on orbit */}
-          {SATELLITES.map((s) => {
-            const value = Math.round(s.target * progress)
+          {SATELLITE_CONFIG.map((s) => {
+            const target = scoreTargets[s.key]
+            const value = Math.round(target * progress)
             const r = RING_RADII[s.ring]
             return (
               <div
@@ -198,9 +255,9 @@ export function Hero() {
           </p>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: 'HEALTH SCORE',   value: auditxScores.healthScore,         color: 'var(--pulsar)', note: 'Calidad técnica' },
-              { label: 'BUSINESS RISK',  value: auditxScores.businessRisk,        color: 'var(--solar)',  note: 'Riesgo activo' },
-              { label: 'EVIDENCE CONF.', value: auditxScores.evidenceConfidence,  color: 'var(--nova)',   note: 'Confianza auditoría' },
+              { label: 'HEALTH SCORE',   value: healthScore,          color: 'var(--pulsar)', note: 'Calidad técnica' },
+              { label: 'BUSINESS RISK',  value: businessRisk,         color: 'var(--solar)',  note: 'Riesgo activo' },
+              { label: 'EVIDENCE CONF.', value: evidenceConfidence,   color: 'var(--nova)',   note: 'Confianza auditoría' },
             ].map((s) => (
               <div key={s.label} className="flex flex-col items-center gap-1">
                 <span className="font-mono text-2xl font-bold tabular-nums leading-none" style={{ color: s.color }}>
@@ -214,28 +271,30 @@ export function Hero() {
             ))}
           </div>
           <p className="font-mono text-[9px] text-muted-foreground/40 text-center">
-            Risk = Severity × Confidence × Scope × BusinessImpact · Nunca un solo promedio
+            Risk = P0×20 + P1×8 · Nunca un solo promedio
           </p>
         </div>
 
-        {/* Tech stack — version only in label, update note as tooltip */}
-        <ul className="flex flex-wrap justify-center gap-2">
-          {tech.map((t) => (
-            <li
-              key={t.label}
-              className="rounded-full px-3.5 py-1.5 font-mono text-[11px]"
-              title={t.note || undefined}
-              style={{
-                background: t.crit ? 'oklch(0.72 0.2 15 / 0.1)' : 'oklch(0.24 0.045 280 / 0.5)',
-                border: `1px solid ${t.crit ? 'oklch(0.72 0.2 15 / 0.42)' : 'var(--border)'}`,
-                color: t.crit ? 'var(--pulsar)' : 'var(--muted-foreground)',
-              }}
-            >
-              {t.crit && <TriangleAlert aria-hidden className="mr-1 inline size-3 align-[-2px]" />}
-              {t.label}
-            </li>
-          ))}
-        </ul>
+        {/* Tech stack */}
+        {scanResult.tech.length > 0 && (
+          <ul className="flex flex-wrap justify-center gap-2">
+            {scanResult.tech.map((t) => (
+              <li
+                key={t.label}
+                className="rounded-full px-3.5 py-1.5 font-mono text-[11px]"
+                title={t.note || undefined}
+                style={{
+                  background: t.crit ? 'oklch(0.72 0.2 15 / 0.1)' : 'oklch(0.24 0.045 280 / 0.5)',
+                  border: `1px solid ${t.crit ? 'oklch(0.72 0.2 15 / 0.42)' : 'var(--border)'}`,
+                  color: t.crit ? 'var(--pulsar)' : 'var(--muted-foreground)',
+                }}
+              >
+                {t.crit && <TriangleAlert aria-hidden className="mr-1 inline size-3 align-[-2px]" />}
+                {t.label}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </section>
   )

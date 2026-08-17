@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { Starfield } from '@/components/cosmos/starfield'
 import { SiteNav } from '@/components/audit/site-nav'
@@ -14,11 +14,28 @@ import { CompetitiveSection } from '@/components/audit/competitive-section'
 import { TrajectorySection } from '@/components/audit/trajectory-section'
 import { RoadmapSection } from '@/components/audit/roadmap-section'
 import { FooterSection } from '@/components/audit/footer-section'
+import { UrlScanner } from '@/components/scanner/url-scanner'
 import type { Priority } from '@/lib/audit-data'
+import type { AuditResult } from '@/lib/scanner/types'
 
 export default function Page() {
   const [filter, setFilter] = useState<Priority | 'ALL'>('ALL')
   const [focusId, setFocusId] = useState<string | null>(null)
+  const [scanResult, setScanResult] = useState<AuditResult | null>(null)
+
+  // Restore previous scan from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem('auditorx-last-result')
+      if (saved) setScanResult(JSON.parse(saved))
+    } catch {}
+  }, [])
+
+  const handleResult = useCallback((r: AuditResult) => {
+    setScanResult(r)
+    setFilter('ALL')
+    setFocusId(null)
+  }, [])
 
   const focusFinding = useCallback((id: string) => {
     setFilter('ALL')
@@ -36,13 +53,19 @@ export default function Page() {
       <SiteNav />
 
       <main>
-        <Hero />
-        <ConstellationMap onFilter={setFilter} onFocusFinding={focusFinding} />
-        <FindingsSection filter={filter} setFilter={setFilter} focusId={focusId} />
-        <MetricsSection />
+        <UrlScanner onResult={handleResult} />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none my-2 h-px mx-auto max-w-5xl"
+          style={{ background: 'linear-gradient(90deg,transparent,var(--border),transparent)' }}
+        />
+        <Hero scanResult={scanResult} />
+        <ConstellationMap scanResult={scanResult} onFilter={setFilter} onFocusFinding={focusFinding} />
+        <FindingsSection scanResult={scanResult} filter={filter} setFilter={setFilter} focusId={focusId} />
+        <MetricsSection scanResult={scanResult} />
         <CompetitiveSection />
-        <TrajectorySection onFocusFinding={focusFinding} />
-        <RoadmapSection onFocusFinding={focusFinding} />
+        <TrajectorySection scanResult={scanResult} onFocusFinding={focusFinding} />
+        <RoadmapSection scanResult={scanResult} onFocusFinding={focusFinding} />
         <FooterSection />
       </main>
     </div>

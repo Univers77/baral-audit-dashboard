@@ -1,21 +1,82 @@
 'use client'
 
 import { CosmicButton, Reveal, SectionHeader, TiltCard } from '@/components/cosmos/primitives'
-import { dataGaps, roadmap } from '@/lib/audit-data'
+import { dataGaps } from '@/lib/audit-data'
+import type { AuditResult } from '@/lib/scanner/types'
 import { useMemo, useState } from 'react'
 
 const PERIOD_COLORS = ['var(--pulsar)', 'var(--solar)', 'var(--star)', 'var(--nova)']
 
-export function RoadmapSection({ onFocusFinding }: { onFocusFinding: (id: string) => void }) {
+const EFFORT_PCT: Record<string, number> = { Bajo: 85, Medio: 55, Alto: 30 }
+
+function buildRoadmap(r: AuditResult) {
+  const allFindings = [...r.findings, ...r.compactFindings]
+  const periods = [
+    {
+      key: 'ahora',
+      label: 'AHORA',
+      subtitle: 'Bloqueos críticos — esta semana',
+      items: allFindings.filter(f => f.priority === 'P0').map(f => ({
+        id: f.id,
+        title: f.title,
+        effort: f.effort,
+        impactPct: EFFORT_PCT[f.effort] ?? 70,
+      })),
+    },
+    {
+      key: 'sprint1',
+      label: 'SPRINT 1',
+      subtitle: 'Alta prioridad — próximas 2 semanas',
+      items: allFindings.filter(f => f.priority === 'P1').map(f => ({
+        id: f.id,
+        title: f.title,
+        effort: f.effort,
+        impactPct: EFFORT_PCT[f.effort] ?? 55,
+      })),
+    },
+    {
+      key: 'sprint2',
+      label: 'SPRINT 2–3',
+      subtitle: 'Mejoras planificadas',
+      items: allFindings.filter(f => f.priority === 'P2').map(f => ({
+        id: f.id,
+        title: f.title,
+        effort: f.effort,
+        impactPct: EFFORT_PCT[f.effort] ?? 40,
+      })),
+    },
+    {
+      key: 'backlog',
+      label: 'BACKLOG',
+      subtitle: 'Espacio profundo / Q3+',
+      items: allFindings.filter(f => f.priority === 'P3').map(f => ({
+        id: f.id,
+        title: f.title,
+        effort: f.effort,
+        impactPct: EFFORT_PCT[f.effort] ?? 20,
+      })),
+    },
+  ].filter(p => p.items.length > 0)
+  return periods
+}
+
+export function RoadmapSection({
+  scanResult,
+  onFocusFinding,
+}: {
+  scanResult: AuditResult | null
+  onFocusFinding: (id: string) => void
+}) {
   const [done, setDone] = useState<Record<string, boolean>>({})
   const [openGap, setOpenGap] = useState<string | null>('g1')
 
-  const total = useMemo(() => roadmap.reduce((n, p) => n + p.items.length, 0), [])
+  const roadmap = useMemo(() => scanResult ? buildRoadmap(scanResult) : [], [scanResult])
+  const total = roadmap.reduce((n, p) => n + p.items.length, 0)
   const completed = Object.values(done).filter(Boolean).length
 
   return (
     <>
-      <section id="roadmap" className="relative px-5 py-24 sm:px-8 sm:py-28">
+      <section id="roadmap" className="relative px-5 py-14 sm:px-8 sm:py-18">
         <div className="mx-auto max-w-6xl">
           <Reveal>
             <SectionHeader
@@ -29,6 +90,23 @@ export function RoadmapSection({ onFocusFinding }: { onFocusFinding: (id: string
             />
           </Reveal>
 
+          {!scanResult && (
+            <Reveal delay={80}>
+              <div
+                className="mt-8 rounded-3xl p-12 text-center"
+                style={{ border: '1px dashed var(--border)', background: 'oklch(1 0 0 / 0.02)' }}
+              >
+                <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground/50 mb-3">
+                  PLAN DE VUELO · SIN DATOS
+                </p>
+                <p className="text-muted-foreground text-[14px]">
+                  El roadmap se genera automáticamente tras escanear una URL.
+                </p>
+              </div>
+            </Reveal>
+          )}
+
+          {scanResult && (<>
           <Reveal delay={90}>
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <div className="glass flex flex-1 items-center gap-4 rounded-2xl px-5 py-4" style={{ border: '1px solid var(--border)' }}>
@@ -39,7 +117,7 @@ export function RoadmapSection({ onFocusFinding }: { onFocusFinding: (id: string
                   <span
                     className="block h-full rounded-full transition-[width] duration-700"
                     style={{
-                      width: `${(completed / total) * 100}%`,
+                      width: `${total > 0 ? (completed / total) * 100 : 0}%`,
                       background: 'linear-gradient(90deg, oklch(0.88 0.14 195), oklch(0.8 0.16 305), oklch(0.86 0.19 155))',
                       boxShadow: '0 0 16px 1px oklch(0.8 0.16 305 / 0.6)',
                     }}
@@ -49,7 +127,7 @@ export function RoadmapSection({ onFocusFinding }: { onFocusFinding: (id: string
                   {completed}/{total}
                 </span>
               </div>
-              <CosmicButton onClick={() => window.print()}>Descargar roadmap completo</CosmicButton>
+              <CosmicButton onClick={() => window.print()}>Descargar roadmap</CosmicButton>
             </div>
           </Reveal>
 
@@ -148,11 +226,12 @@ export function RoadmapSection({ onFocusFinding }: { onFocusFinding: (id: string
               )
             })}
           </div>
+          </>)}
         </div>
       </section>
 
       {/* Data gaps */}
-      <section className="relative px-5 pb-24 sm:px-8 sm:pb-28">
+      <section className="relative px-5 pb-14 sm:px-8 sm:pb-18">
         <div className="mx-auto max-w-3xl">
           <Reveal>
             <SectionHeader

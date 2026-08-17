@@ -1,16 +1,25 @@
 'use client'
 
 import { CosmicButton, Reveal, SectionHeader } from '@/components/cosmos/primitives'
-import { findings, funnelStages, hypotheses, priorityMeta } from '@/lib/audit-data'
+import { funnelStages, hypotheses, priorityMeta } from '@/lib/audit-data'
+import type { AuditResult } from '@/lib/scanner/types'
 import { useState } from 'react'
 
-export function TrajectorySection({ onFocusFinding }: { onFocusFinding: (id: string) => void }) {
-  const [openStage, setOpenStage] = useState<string | null>('understand')
+export function TrajectorySection({
+  scanResult,
+  onFocusFinding,
+}: {
+  scanResult: AuditResult | null
+  onFocusFinding: (id: string) => void
+}) {
+  const [openStage, setOpenStage] = useState<string | null>(null)
 
-  const stageFindings = (key: string) => findings.filter((f) => f.stage === key)
+  const activeFindings = scanResult?.findings ?? []
+  const stageFindings = (key: string) => activeFindings.filter((f) => f.stage === key)
+  const stageCount = (key: string) => activeFindings.filter((f) => f.stage === key).length
 
   return (
-    <section className="relative px-5 py-24 sm:px-8 sm:py-28">
+    <section className="relative px-5 py-14 sm:px-8 sm:py-18">
       <div className="mx-auto max-w-6xl">
         <Reveal>
           <SectionHeader
@@ -20,23 +29,37 @@ export function TrajectorySection({ onFocusFinding }: { onFocusFinding: (id: str
                 El camino del usuario hacia <span className="text-gradient-cool">la acción</span>
               </>
             }
-            description="Cada nodo es una etapa del funnel; el arco entre nodos muestra la fuga de gravedad — el porcentaje de usuarios que nunca alcanzan la siguiente órbita."
+            description="Cada nodo es una etapa del funnel con los hallazgos que la afectan. Las fugas de gravedad entre etapas requieren datos reales de GA4 para calcularse — no se estiman."
           />
         </Reveal>
 
         {/* Pipeline */}
         <Reveal delay={100}>
+          {!scanResult ? (
+            <div
+              className="glass mt-12 rounded-3xl p-12 text-center"
+              style={{ border: '1px dashed var(--border)' }}
+            >
+              <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground/50 mb-3">
+                TRAYECTORIA · SIN DATOS
+              </p>
+              <p className="text-muted-foreground text-[14px]">
+                El mapa del funnel aparece aquí tras escanear una URL.
+              </p>
+            </div>
+          ) : (
           <div
             className="glass mt-12 overflow-x-auto rounded-3xl p-6"
             style={{ border: '1px solid var(--border)' }}
           >
             <ol className="flex min-w-[720px] items-start">
               {funnelStages.map((s, i) => {
-                const severe = s.count >= 6
-                const color = severe ? 'var(--pulsar)' : s.count >= 5 ? 'var(--solar)' : 'var(--nova)'
+                const count = stageCount(s.key)
+                const severe = count >= 4
+                const color = severe ? 'var(--pulsar)' : count >= 2 ? 'var(--solar)' : 'var(--nova)'
                 const glow = severe
                   ? 'oklch(0.72 0.2 15 / 0.5)'
-                  : s.count >= 5
+                  : count >= 2
                     ? 'oklch(0.85 0.13 88 / 0.4)'
                     : 'oklch(0.86 0.19 155 / 0.35)'
                 const isOpen = openStage === s.key
@@ -65,28 +88,14 @@ export function TrajectorySection({ onFocusFinding }: { onFocusFinding: (id: str
                             style={{ border: `1px solid ${color}`, animation: 'pulse-ring 2.6s ease-out infinite' }}
                           />
                         )}
-                        <span className="relative font-mono text-lg font-bold tabular-nums">{s.count}</span>
+                        <span className="relative font-mono text-lg font-bold tabular-nums">{count}</span>
                       </span>
                       <span className="font-mono text-[10.5px] tracking-[0.1em]">{s.label}</span>
                     </button>
 
-                    {s.dropoff !== null && (
+                    {i < funnelStages.length - 1 && (
                       <div className="mt-8 flex flex-1 flex-col items-center gap-1.5 px-1">
-                        <span
-                          className="h-[2px] w-full"
-                          style={{
-                            background:
-                              s.dropoff > 25
-                                ? 'linear-gradient(90deg, oklch(0.72 0.2 15 / 0.2), oklch(0.72 0.2 15))'
-                                : 'var(--border)',
-                          }}
-                        />
-                        <span
-                          className="font-mono text-[10px]"
-                          style={{ color: s.dropoff > 25 ? 'var(--pulsar)' : 'var(--muted-foreground)' }}
-                        >
-                          −{s.dropoff}%
-                        </span>
+                        <span className="h-[2px] w-full" style={{ background: 'var(--border)' }} />
                       </div>
                     )}
                   </li>
@@ -107,7 +116,7 @@ export function TrajectorySection({ onFocusFinding }: { onFocusFinding: (id: str
                   >
                     <div className="text-muted-foreground/70 font-mono text-[10px] tracking-[0.16em]">
                       ETAPA {funnelStages.find((s) => s.key === openStage)?.label} ·{' '}
-                      {funnelStages.find((s) => s.key === openStage)?.count} HALLAZGOS RELACIONADOS
+                      {stageFindings(openStage).length} HALLAZGOS RELACIONADOS
                     </div>
                     <ul className="mt-3 flex flex-col gap-2">
                       {stageFindings(openStage).length > 0 ? (
@@ -121,8 +130,8 @@ export function TrajectorySection({ onFocusFinding }: { onFocusFinding: (id: str
                               <span
                                 className="size-2 shrink-0 rounded-full"
                                 style={{
-                                  background: priorityMeta[f.priority].color,
-                                  boxShadow: `0 0 10px 1px ${priorityMeta[f.priority].glow}`,
+                                  background: priorityMeta[f.priority as keyof typeof priorityMeta]?.color ?? 'var(--nova)',
+                                  boxShadow: `0 0 10px 1px ${priorityMeta[f.priority as keyof typeof priorityMeta]?.glow ?? 'transparent'}`,
                                 }}
                               />
                               <span className="text-muted-foreground/60 w-28 shrink-0 font-mono text-[10.5px]">
@@ -144,6 +153,7 @@ export function TrajectorySection({ onFocusFinding }: { onFocusFinding: (id: str
               </div>
             </div>
           </div>
+          )}
         </Reveal>
 
         {/* Hypotheses */}
@@ -164,15 +174,12 @@ export function TrajectorySection({ onFocusFinding }: { onFocusFinding: (id: str
                   <span className="text-accent font-mono text-[10.5px] tracking-[0.1em]">{h.stage}</span>
                   <span className="text-muted-foreground text-[12.5px]">{h.method}</span>
                   <span className="text-muted-foreground text-[12.5px]">{h.metric}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="bg-border/70 h-1.5 w-16 overflow-hidden rounded-full md:w-12">
-                      <span
-                        className="block h-full rounded-full"
-                        style={{ width: `${h.confidence}%`, background: 'var(--quasar)' }}
-                      />
-                    </span>
-                    <span className="text-primary font-mono text-[12px] tabular-nums">{h.confidence}%</span>
-                  </div>
+                  <span
+                    className="rounded-full px-2.5 py-1 font-mono text-[9px] font-bold tracking-wide"
+                    style={{ background: 'oklch(0.85 0.13 88 / 0.1)', color: 'oklch(0.85 0.13 88 / 0.8)', border: '1px solid oklch(0.85 0.13 88 / 0.2)' }}
+                  >
+                    REQUIERE GA4
+                  </span>
                 </div>
               </Reveal>
             ))}

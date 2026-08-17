@@ -2,13 +2,11 @@
 
 import { Reveal, SectionHeader, TiltCard } from '@/components/cosmos/primitives'
 import {
-  compactFindings,
-  counts,
-  findings,
   funnelStages,
   priorityMeta,
   type Priority,
 } from '@/lib/audit-data'
+import type { AuditResult } from '@/lib/scanner/types'
 import { useMemo, useState } from 'react'
 
 const PRIORITIES: Priority[] = ['P0', 'P1', 'P2', 'P3']
@@ -31,49 +29,52 @@ type Node = {
 }
 
 export function ConstellationMap({
+  scanResult,
   onFilter,
   onFocusFinding,
 }: {
+  scanResult: AuditResult | null
   onFilter: (p: Priority | 'ALL') => void
   onFocusFinding: (id: string) => void
 }) {
   const [hover, setHover] = useState<Node | null>(null)
 
   const nodes = useMemo<Node[]>(() => {
+    if (!scanResult) return []
     const W = 1000
     const H = 420
     const stageX = (index: number) => 90 + (index * (W - 180)) / (funnelStages.length - 1)
     const priorityY: Record<Priority, number> = { P0: 84, P1: 172, P2: 268, P3: 356 }
 
-    const detailed: Node[] = findings.map((f) => {
-      const si = funnelStages.findIndex((s) => s.key === f.stage)
+    const detailed: Node[] = scanResult.findings.map((f) => {
+      const si = Math.max(0, funnelStages.findIndex((s) => s.key === f.stage))
       return {
         id: f.id,
         title: f.title,
-        priority: f.priority,
-        stage: funnelStages[si].label,
+        priority: f.priority as Priority,
+        stage: funnelStages[si]?.label ?? f.stage,
         x: stageX(si) + jitter(f.id, 58),
-        y: priorityY[f.priority] + jitter(f.id + 'y', 34),
+        y: priorityY[f.priority as Priority] + jitter(f.id + 'y', 34),
         r: f.priority === 'P0' ? 8 : 6.4,
       }
     })
 
-    const minor: Node[] = compactFindings.map((f, i) => {
+    const minor: Node[] = scanResult.compactFindings.map((f, i) => {
       const si = i % funnelStages.length
       return {
         id: f.id,
         title: f.title,
-        priority: f.priority,
-        stage: funnelStages[si].label,
+        priority: f.priority as Priority,
+        stage: funnelStages[si]?.label ?? String(i),
         x: stageX(si) + jitter(f.id, 96),
-        y: priorityY[f.priority] + jitter(f.id + 'y', 52),
+        y: priorityY[f.priority as Priority] + jitter(f.id + 'y', 52),
         r: f.priority === 'P2' ? 4.6 : 3.4,
       }
     })
 
     void H
     return [...detailed, ...minor]
-  }, [])
+  }, [scanResult])
 
   /** Links: connect each node to the next node within the same priority band (a constellation line). */
   const links = useMemo(() => {
@@ -86,7 +87,7 @@ export function ConstellationMap({
   }, [nodes])
 
   return (
-    <section id="diagnostico" className="relative px-5 py-24 sm:px-8 sm:py-28">
+    <section id="diagnostico" className="relative px-5 py-14 sm:px-8 sm:py-18">
       <div className="mx-auto max-w-6xl">
         <Reveal>
           <SectionHeader
@@ -104,9 +105,22 @@ export function ConstellationMap({
         {/* Star chart */}
         <Reveal delay={120}>
           <div
-            className="glass relative mt-12 overflow-hidden rounded-3xl p-3 sm:p-5"
+            className="glass relative mt-8 overflow-hidden rounded-3xl p-3 sm:p-5"
             style={{ border: '1px solid var(--border)' }}
           >
+            {!scanResult && (
+              <div className="flex items-center justify-center py-20 text-center">
+                <div>
+                  <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground/50 mb-2">
+                    CONSTELACIÓN · SIN DATOS
+                  </p>
+                  <p className="text-muted-foreground text-[13px]">
+                    Los hallazgos aparecen mapeados aquí tras escanear una URL.
+                  </p>
+                </div>
+              </div>
+            )}
+            {scanResult && (
             <div className="relative overflow-x-auto">
               <svg
                 viewBox="0 0 1000 420"
@@ -212,26 +226,29 @@ export function ConstellationMap({
                 })}
               </svg>
             </div>
+            )}
 
             {/* hover readout */}
-            <div className="border-border/70 mt-3 flex min-h-[3.25rem] items-center gap-3 border-t px-2 pt-3">
-              {hover ? (
-                <>
-                  <span
-                    className="rounded-full px-2.5 py-1 font-mono text-[10px] font-bold"
-                    style={{ background: priorityMeta[hover.priority].soft, color: priorityMeta[hover.priority].color }}
-                  >
-                    {hover.priority} · {priorityMeta[hover.priority].magnitude}
+            {scanResult && (
+              <div className="border-border/70 mt-3 flex min-h-[3.25rem] items-center gap-3 border-t px-2 pt-3">
+                {hover ? (
+                  <>
+                    <span
+                      className="rounded-full px-2.5 py-1 font-mono text-[10px] font-bold"
+                      style={{ background: priorityMeta[hover.priority].soft, color: priorityMeta[hover.priority].color }}
+                    >
+                      {hover.priority} · {priorityMeta[hover.priority].magnitude}
+                    </span>
+                    <span className="text-muted-foreground/70 font-mono text-[11px]">{hover.id}</span>
+                    <span className="truncate text-[13px]">{hover.title}</span>
+                  </>
+                ) : (
+                  <span className="text-muted-foreground/60 font-mono text-[11px]">
+                    Pasa el cursor sobre una estrella para leer su ficha · clic para abrir el hallazgo completo
                   </span>
-                  <span className="text-muted-foreground/70 font-mono text-[11px]">{hover.id}</span>
-                  <span className="truncate text-[13px]">{hover.title}</span>
-                </>
-              ) : (
-                <span className="text-muted-foreground/60 font-mono text-[11px]">
-                  Pasa el cursor sobre una estrella para leer su ficha · clic para abrir el hallazgo completo
-                </span>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         </Reveal>
 
@@ -239,8 +256,17 @@ export function ConstellationMap({
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {PRIORITIES.map((p, i) => {
             const meta = priorityMeta[p]
-            const count = counts[p]
-            const max = Math.max(...PRIORITIES.map((x) => counts[x]))
+            const allFindings = scanResult
+              ? [...scanResult.findings, ...scanResult.compactFindings]
+              : []
+            const scanCounts: Record<Priority, number> = {
+              P0: allFindings.filter(f => f.priority === 'P0').length,
+              P1: allFindings.filter(f => f.priority === 'P1').length,
+              P2: allFindings.filter(f => f.priority === 'P2').length,
+              P3: allFindings.filter(f => f.priority === 'P3').length,
+            }
+            const count = scanResult ? scanCounts[p] : 0
+            const max = Math.max(1, ...PRIORITIES.map((x) => scanCounts[x]))
             return (
               <Reveal key={p} delay={i * 90}>
                 <TiltCard
