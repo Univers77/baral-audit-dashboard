@@ -40,6 +40,69 @@ function buildDeviceShots(url: string): DeviceShots {
   }
 }
 
+/**
+ * Detección de stack sobre el HTML COMPLETO.
+ * Antes esto vivía en el analyzer y miraba htmlSnippet (2 000 caracteres):
+ * gtag, GTM y la mayoría de plugins se declaran mucho más abajo del <head>,
+ * así que el informe reportaba "1 tecnología · sin analítica" en sitios con
+ * Analytics claramente instalado.
+ */
+const TECH_PATTERNS: { label: string; re: RegExp; crit?: boolean }[] = [
+  { label: 'WordPress',            re: /wp-content|wp-includes|wp-json/i },
+  { label: 'Elementor',            re: /elementor/i },
+  { label: 'Astra',                re: /astra-theme|themes\/astra/i },
+  { label: 'Spectra',              re: /spectra|ultimate-addons/i },
+  { label: 'WooCommerce',          re: /woocommerce/i },
+  { label: 'Shopify',              re: /cdn\.shopify|shopify\.com/i },
+  { label: 'Wix',                  re: /wix\.com|wixstatic/i },
+  { label: 'Squarespace',          re: /squarespace/i },
+  { label: 'Webflow',              re: /webflow/i },
+  { label: 'Next.js',              re: /_next\/static|__NEXT_DATA__/i },
+  { label: 'React',                re: /react(-dom)?[.@]|data-reactroot/i },
+  { label: 'Vue.js',               re: /vue(\.min)?\.js|data-v-[0-9a-f]{8}/i },
+  { label: 'jQuery',               re: /jquery[.-]/i },
+  { label: 'Bootstrap',            re: /bootstrap(\.min)?\.(css|js)/i },
+  { label: 'Font Awesome',         re: /font-?awesome/i },
+  { label: 'Google Analytics 4',   re: /gtag\/js|googletagmanager\.com\/gtag|G-[A-Z0-9]{8,}/i },
+  { label: 'Google Tag Manager',   re: /googletagmanager\.com\/gtm|GTM-[A-Z0-9]+/i },
+  { label: 'Google Site Kit',      re: /google-site-kit/i },
+  { label: 'Meta Pixel',           re: /connect\.facebook\.net|fbevents\.js/i },
+  { label: 'LiteSpeed Cache',      re: /litespeed|lscache/i },
+  { label: 'WP Rocket',            re: /wp-rocket|rocket-loader/i },
+  { label: 'Yoast SEO',            re: /yoast|wpseo/i },
+  { label: 'All in One SEO',       re: /aioseo|all-in-one-seo/i },
+  { label: 'Premio Chaty',         re: /chaty/i },
+  { label: 'Swiper',               re: /swiper(\.min)?\.(js|css)/i },
+  { label: 'Tiny Slider',          re: /tiny-slider|tns-/i },
+  { label: 'SweetAlert2',          re: /sweetalert/i },
+  { label: 'Cloudflare',           re: /cloudflare|cdnjs\.cloudflare/i },
+]
+
+function detectTech(html: string, headers: Record<string, string>): { label: string; crit: boolean; note: string }[] {
+  const out: { label: string; crit: boolean; note: string }[] = []
+  const seen = new Set<string>()
+  const push = (label: string, note = '') => {
+    if (seen.has(label)) return
+    seen.add(label)
+    out.push({ label, crit: false, note })
+  }
+
+  // Cabeceras del servidor
+  const server = headers['server'] ?? ''
+  const xPowered = headers['x-powered-by'] ?? ''
+  if (/nginx/i.test(server)) push('Nginx')
+  if (/apache/i.test(server)) push('Apache')
+  if (/litespeed/i.test(server)) push('LiteSpeed')
+  if (/hcdn|hostinger/i.test(server)) push('Hostinger CDN')
+  if (headers['cf-ray']) push('Cloudflare CDN')
+  if (/php/i.test(xPowered)) push('PHP', xPowered.replace(/^PHP\/?/i, '').trim())
+
+  for (const { label, re } of TECH_PATTERNS) if (re.test(html)) push(label)
+
+  if (out.length === 0) push('Stack no detectado', 'Sin firmas reconocibles en el HTML servido')
+  return out
+}
+
 function normalizeUrl(input: string): string {
   const s = input.trim()
   if (/^https?:\/\//i.test(s)) return s
@@ -221,6 +284,7 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
     robotsTxtExists,
     sitemapExists,
     htmlSnippet: htmlRaw.slice(0, 2000),
+    techDetected: detectTech(htmlRaw, headers),
     screenshotUrl: buildDeviceShots(url).desktop,
     screenshots: buildDeviceShots(url),
   }

@@ -47,7 +47,7 @@ export function classify(r: AuditResult): Classification {
   pts += wcPts
   signals.push({
     label: 'Volumen de contenido',
-    value: `${wc.toLocaleString('es-BO')} palabras`,
+    value: `${wc.toLocaleString('es-BO')} ${wc === 1 ? 'palabra' : 'palabras'}`,
     points: wcPts,
     detail: wc >= 900
       ? 'Contenido suficiente para sostener posicionamiento por long-tail.'
@@ -60,7 +60,7 @@ export function classify(r: AuditResult): Classification {
   pts += ilPts
   signals.push({
     label: 'Arquitectura interna',
-    value: `${il} enlaces internos`,
+    value: `${il} ${il === 1 ? 'enlace interno' : 'enlaces internos'}`,
     points: ilPts,
     detail: il >= 15
       ? 'Estructura navegable: el rastreador puede recorrer el sitio y repartir autoridad.'
@@ -73,7 +73,7 @@ export function classify(r: AuditResult): Classification {
   pts += imPts
   signals.push({
     label: 'Inventario visual',
-    value: `${im} imágenes`,
+    value: `${im} ${im === 1 ? 'imagen' : 'imágenes'}`,
     points: imPts,
     detail: im >= 25
       ? 'Producción visual significativa: hay activos que rentabilizar en búsqueda por imágenes.'
@@ -101,7 +101,7 @@ export function classify(r: AuditResult): Classification {
   pts += techPts
   signals.push({
     label: 'Stack tecnológico',
-    value: `${techCount} tecnologías${hasAnalytics ? ' · con analítica' : ' · sin analítica'}`,
+    value: `${techCount} ${techCount === 1 ? 'tecnología' : 'tecnologías'}${hasAnalytics ? ' · con analítica' : ' · sin analítica'}`,
     points: techPts,
     detail: hasAnalytics
       ? 'Hay medición instalada: se puede contrastar el diagnóstico con datos reales.'

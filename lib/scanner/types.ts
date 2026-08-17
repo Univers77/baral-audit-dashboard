@@ -55,6 +55,8 @@ export interface RawScan {
   llmsTxtExists: boolean
   // Raw HTML (truncated for analysis)
   htmlSnippet: string
+  /** stack detectado sobre el HTML completo, no sobre htmlSnippet */
+  techDetected: { label: string; crit: boolean; note: string }[]
   // Screenshot URL — alias de screenshots.desktop (compatibilidad)
   screenshotUrl: string
   // Renders por dispositivo: cada uno se captura con el viewport real del

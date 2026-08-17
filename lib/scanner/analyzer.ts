@@ -373,23 +373,20 @@ export function analyze(raw: RawScan): AuditResult {
 
   const overall = Math.round((seoScore * 0.35 + perfScore * 0.25 + a11yScore * 0.2 + convScore * 0.2))
 
-  // ── Tech detection (best-effort from headers/HTML) ────────
-  const tech: { label: string; crit: boolean; note: string }[] = []
-  const server = raw.headers['server'] ?? ''
-  const xPowered = raw.headers['x-powered-by'] ?? ''
-  if (/nginx/i.test(server)) tech.push({ label: 'Nginx', crit: false, note: '' })
-  if (/apache/i.test(server)) tech.push({ label: 'Apache', crit: false, note: '' })
-  if (/litespeed/i.test(server)) tech.push({ label: 'LiteSpeed', crit: false, note: '' })
-  if (/cloudflare/i.test(server) || raw.headers['cf-ray']) tech.push({ label: 'Cloudflare CDN', crit: false, note: '' })
-  if (/php/i.test(xPowered)) tech.push({ label: 'PHP', crit: false, note: xPowered })
-  if (/WordPress/i.test(raw.htmlSnippet)) tech.push({ label: 'WordPress', crit: false, note: '' })
-  if (/Elementor/i.test(raw.htmlSnippet)) tech.push({ label: 'Elementor', crit: false, note: '' })
-  if (/shopify/i.test(raw.htmlSnippet)) tech.push({ label: 'Shopify', crit: false, note: '' })
-  if (/wix\.com/i.test(raw.htmlSnippet)) tech.push({ label: 'Wix', crit: false, note: '' })
-  if (/squarespace/i.test(raw.htmlSnippet)) tech.push({ label: 'Squarespace', crit: false, note: '' })
-  if (/gtag|GA4|G-[A-Z0-9]/i.test(raw.htmlSnippet)) tech.push({ label: 'Google Analytics 4', crit: false, note: '' })
-  if (/gtm\.js|GTM-/i.test(raw.htmlSnippet)) tech.push({ label: 'Google Tag Manager', crit: false, note: '' })
-  if (tech.length === 0) tech.push({ label: 'Stack no detectado', crit: false, note: 'Análisis de headers insuficiente' })
+  // ── Tech stack ────────────────────────────────────────────
+  // Detectado en el fetcher sobre el HTML completo. Cuando esto se hacía aquí
+  // contra htmlSnippet (2 000 chars) se perdía casi todo el stack, porque
+  // gtag/GTM y los plugins se declaran mucho más abajo del <head>.
+  const tech = raw.techDetected ?? [{ label: 'Stack no detectado', crit: false, note: '' }]
+
+  // Analítica ausente: sin medición, ninguna mejora se puede comprobar
+  const hasAnalytics = tech.some(t => /analytics|tag manager|pixel|site kit/i.test(t.label))
+  if (!hasAnalytics) {
+    compact.push({
+      id: nextId(`${dom}-DATA`), module: 'M14',
+      title: 'Sin herramienta de analítica detectada — no hay forma de comprobar si algo mejora', effort: 'Bajo', priority: 'P2',
+    })
+  }
 
   return {
     domain: raw.domain,
