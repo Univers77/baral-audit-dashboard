@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useCallback, useEffect, useState } from 'react'
 
-import { Starfield } from '@/components/cosmos/starfield'
+import { VideoBackground } from '@/components/cosmos/video-background'
 import { SiteNav } from '@/components/audit/site-nav'
 import { Hero } from '@/components/audit/hero'
 import { ConstellationMap } from '@/components/audit/constellation-map'
@@ -57,8 +57,7 @@ export default function Page() {
 
   return (
     <div className="relative min-h-screen overflow-x-clip">
-      <div aria-hidden="true" className="nebula-wash pointer-events-none fixed inset-0 -z-20" />
-      <Starfield />
+      <VideoBackground />
 
       <SiteNav />
 
