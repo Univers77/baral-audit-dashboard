@@ -39,6 +39,8 @@ export interface RawScan {
   externalLinks: number
   /** externos con rel=nofollow — no transmiten autoridad */
   externalNofollow: number
+  /** rutas internas reales halladas, para capturar páginas distintas */
+  internalUrls: string[]
   brokenLinks: string[]
   // Usabilidad / calidad de código
   hreflangCount: number

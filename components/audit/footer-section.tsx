@@ -1,6 +1,6 @@
 'use client'
 
-import { references, site, totalFindings } from '@/lib/audit-data'
+import { site, totalFindings } from '@/lib/audit-data'
 import { CosmicButton, Reveal, SectionHeader, TiltCard } from '@/components/cosmos/primitives'
 import { BaralPlanet } from '@/components/audit/baral-planet'
 import { BaralLogo } from '@/components/brand/baral-logo'
@@ -39,69 +39,7 @@ export function FooterSection({
   }
   return (
     <>
-      <section id="referencias" className="relative border-t border-border/60 py-12 md:py-16">
-        <div className="mx-auto w-full max-w-6xl px-6">
-          <SectionHeader
-            eyebrow="Cartografía de referencia"
-            title="Qué orbita alrededor tuyo"
-            description="Sistemas vecinos observados durante la auditoría. Cada uno aporta algo que admirar, algo que adaptar y algo que evitar: nada se subestima."
-          />
 
-          <div className="mt-12 grid gap-4 md:grid-cols-3">
-            {references.map((ref, i) => (
-              <Reveal key={ref.domain} delay={i * 80}>
-                <TiltCard className="h-full p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <a
-                        href={ref.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="truncate block font-mono text-sm font-medium text-foreground underline decoration-dotted underline-offset-2 hover:text-gradient-quasar"
-                      >
-                        {ref.domain} ↗
-                      </a>
-                      <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                        {ref.orbit}
-                      </p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="font-mono text-xl font-semibold tabular-nums text-gradient-quasar">
-                        {ref.score !== null ? ref.score : '—'}
-                      </p>
-                      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                        {ref.score !== null ? 'score' : 'sin datos'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <dl className="mt-4 flex flex-col gap-2.5 border-t border-border/60 pt-4">
-                    {(
-                      [
-                        ['Admirar', ref.admire, 'var(--nova)'],
-                        ['Adaptar', ref.adapt, 'var(--star)'],
-                        ['Evitar', ref.avoid, 'var(--pulsar)'],
-                      ] as const
-                    ).map(([k, v, color]) => (
-                      <div key={k} className="flex items-start gap-3">
-                        <dt className="flex w-16 shrink-0 items-center gap-2 pt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                          <span
-                            className="h-1.5 w-1.5 shrink-0 rounded-full"
-                            style={{ background: color }}
-                            aria-hidden="true"
-                          />
-                          {k}
-                        </dt>
-                        <dd className="text-sm leading-relaxed text-foreground/85">{v}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </TiltCard>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
 
       <section className="relative overflow-hidden border-t border-border/60 py-12 md:py-16">
         <div

@@ -1,441 +1,341 @@
 'use client'
 
-import { Reveal, SectionHeader, TiltCard } from '@/components/cosmos/primitives'
+import { Reveal, SectionHeader } from '@/components/cosmos/primitives'
 import {
-  axisKeys,
-  axisLabels,
-  compareColumns,
-  compareRows,
-  competitiveBenchmarkNote,
-  constellationSets,
-  references,
-  type AxisKey,
-} from '@/lib/audit-data'
-import { cn } from '@/lib/utils'
-import { useState } from 'react'
+  COMPARABLE_LABELS,
+  VERDICT_META,
+  benchmarkScore,
+  comparableRow,
+  metricsFor,
+  type Competitor,
+} from '@/lib/benchmarks'
+import type { AuditResult } from '@/lib/scanner/types'
+import { Loader2, Plus, Search, Trash2, X, Info } from 'lucide-react'
+import { useCallback, useRef, useState } from 'react'
 
-const CX = 250
-const CY = 210
-const MAX_R = 138
+const MAX_COMPETIDORES = 3
 
-const SERIES = [
-  { key: 'client', label: 'Tu sitio', color: 'var(--quasar)', fill: 'oklch(0.8 0.16 305 / 0.16)', dash: '' },
-  { key: 'avg', label: 'Benchmark estimado', color: 'var(--star)', fill: 'oklch(0.88 0.14 195 / 0.08)', dash: '5 4' },
-  { key: 'top', label: 'Referencia aspiracional', color: 'var(--nova)', fill: 'oklch(0.86 0.19 155 / 0.06)', dash: '2 6' },
-] as const
-
-function polar(r: number, angleDeg: number) {
-  const a = ((angleDeg - 90) * Math.PI) / 180
-  return { x: CX + r * Math.cos(a), y: CY + r * Math.sin(a) }
+function normalizeDomain(input: string): string {
+  const s = input.trim().replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0]
+  return s.toLowerCase()
 }
 
-function pointsFor(values: Record<AxisKey, number>) {
-  return axisKeys
-    .map((k, i) => {
-      const p = polar((values[k] / 100) * MAX_R, (360 / axisKeys.length) * i)
-      return `${p.x.toFixed(1)},${p.y.toFixed(1)}`
+export function CompetitiveSection({ scanResult }: { scanResult: AuditResult | null }) {
+  const [input, setInput] = useState('')
+  const [competitors, setCompetitors] = useState<Competitor[]>([])
+  const [openMetric, setOpenMetric] = useState<string | null>(null)
+  const esRefs = useRef<Record<string, EventSource>>({})
+
+  const scanCompetitor = useCallback((url: string) => {
+    const domain = normalizeDomain(url)
+    const full = /^https?:\/\//i.test(url) ? url : `https://${domain}`
+
+    setCompetitors(prev => [...prev, { url: full, domain, status: 'escaneando' }])
+
+    const es = new EventSource(`/api/analyze?url=${encodeURIComponent(full)}`)
+    esRefs.current[domain] = es
+
+    es.addEventListener('result', e => {
+      const result: AuditResult = JSON.parse((e as MessageEvent).data)
+      setCompetitors(prev => prev.map(c => (c.domain === domain ? { ...c, status: 'listo', result } : c)))
     })
-    .join(' ')
-}
+    es.addEventListener('done', () => { es.close(); delete esRefs.current[domain] })
+    es.addEventListener('error', e => {
+      es.close()
+      let msg = 'No se pudo analizar el sitio'
+      try { msg = JSON.parse((e as MessageEvent).data).message } catch {}
+      setCompetitors(prev => prev.map(c => (c.domain === domain ? { ...c, status: 'error', error: msg } : c)))
+    })
+    es.onerror = () => {
+      es.close()
+      setCompetitors(prev =>
+        prev.map(c => (c.domain === domain && c.status === 'escaneando'
+          ? { ...c, status: 'error', error: 'El sitio no respondió o bloqueó la conexión' }
+          : c)),
+      )
+    }
+  }, [])
 
-export function CompetitiveSection() {
-  const [visible, setVisible] = useState<Record<string, boolean>>({ client: true, avg: true, top: false })
-  const [hoverAxis, setHoverAxis] = useState<number | null>(null)
+  const handleAdd = (e: React.FormEvent) => {
+    e.preventDefault()
+    const domain = normalizeDomain(input)
+    if (!domain || !domain.includes('.')) return
+    if (competitors.length >= MAX_COMPETIDORES) return
+    if (competitors.some(c => c.domain === domain)) return
+    if (scanResult && domain === normalizeDomain(scanResult.domain)) return
+    scanCompetitor(input)
+    setInput('')
+  }
 
-  const client = constellationSets.client
-  const avg = constellationSets.avg
+  const removeCompetitor = (domain: string) => {
+    esRefs.current[domain]?.close()
+    delete esRefs.current[domain]
+    setCompetitors(prev => prev.filter(c => c.domain !== domain))
+  }
+
+  // Estado vacío: sin escaneo todavía
+  if (!scanResult) {
+    return (
+      <section id="competencia" className="relative border-t border-border/60 px-5 py-14 sm:px-8">
+        <div className="mx-auto max-w-6xl">
+          <SectionHeader
+            eyebrow="Posición competitiva"
+            title="Posición frente al mercado"
+            description="Analice un sitio para ver su cumplimiento frente a los estándares publicados y compararlo con los competidores que elija."
+          />
+        </div>
+      </section>
+    )
+  }
+
+  const metrics = metricsFor(scanResult)
+  const bScore = benchmarkScore(scanResult)
+  const listos = competitors.filter(c => c.status === 'listo' && c.result)
 
   return (
-    <section id="competencia" className="relative px-5 py-14 sm:px-8 sm:py-18">
+    <section id="competencia" className="relative border-t border-border/60 px-5 py-14 sm:px-8 sm:py-18">
       <div className="mx-auto max-w-6xl">
         <Reveal>
           <SectionHeader
-            eyebrow="Mecánica orbital"
+            eyebrow="Posición competitiva"
             title={
               <>
-                Tu posición frente a los cuerpos <span className="text-gradient-quasar">más cercanos y peligrosos</span>
+                Cómo se compara <span className="text-gradient-quasar">{scanResult.domain}</span>
               </>
             }
-            description="Selección editorial de referencias del mercado digital boliviano. Los ejes del radar son benchmarks estimados de la industria — cada competidor requiere auditoría propia para obtener datos medidos."
+            description="Primero contra estándares públicos con fuente citable. Después, contra los competidores que usted elija: se analizan en el momento con el mismo motor, de modo que la comparación sea pareja."
           />
         </Reveal>
 
-        {/* Radar */}
-        <div className="mt-8 grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)]">
-          <Reveal delay={80}>
-            <div
-              className="glass relative rounded-3xl p-4"
-              style={{ border: '1px solid var(--border)' }}
-            >
-              <div
-                aria-hidden
-                className="animate-slow-spin absolute inset-16 rounded-full opacity-25 blur-3xl"
-                style={{
-                  background:
-                    'conic-gradient(from 90deg, oklch(0.8 0.16 305 / 0.6), transparent, oklch(0.88 0.14 195 / 0.5), transparent)',
-                }}
-              />
-              <svg
-                viewBox="0 0 500 420"
-                className="relative w-full"
-                role="img"
-                aria-label="Radar comparativo entre tu sitio, el competidor promedio y la referencia top"
-              >
-                {[0.25, 0.5, 0.75, 1].map((f) => (
-                  <polygon
-                    key={f}
-                    points={axisKeys
-                      .map((_, i) => {
-                        const p = polar(MAX_R * f, (360 / axisKeys.length) * i)
-                        return `${p.x.toFixed(1)},${p.y.toFixed(1)}`
-                      })
-                      .join(' ')}
-                    fill="none"
-                    stroke="var(--border)"
-                    strokeWidth="1"
-                  />
-                ))}
-
-                {axisKeys.map((_, i) => {
-                  const p = polar(MAX_R, (360 / axisKeys.length) * i)
-                  const isHover = hoverAxis === i
-                  return (
-                    <line
-                      key={i}
-                      x1={CX}
-                      y1={CY}
-                      x2={p.x}
-                      y2={p.y}
-                      stroke={isHover ? 'var(--quasar)' : 'var(--border)'}
-                      strokeWidth={isHover ? 1.5 : 1}
-                    />
-                  )
-                })}
-
-                {SERIES.filter((s) => visible[s.key]).map((s) => (
-                  <polygon
-                    key={s.key}
-                    points={pointsFor(constellationSets[s.key])}
-                    fill={s.fill}
-                    stroke={s.color}
-                    strokeWidth={s.key === 'client' ? 2.5 : 1.8}
-                    strokeDasharray={s.dash || undefined}
-                    style={{ filter: s.key === 'client' ? 'drop-shadow(0 0 10px oklch(0.8 0.16 305 / 0.5))' : undefined }}
-                  />
-                ))}
-
-                {/* client vertices */}
-                {visible.client &&
-                  axisKeys.map((k, i) => {
-                    const p = polar((client[k] / 100) * MAX_R, (360 / axisKeys.length) * i)
-                    return (
-                      <circle
-                        key={k}
-                        cx={p.x}
-                        cy={p.y}
-                        r={hoverAxis === i ? 6 : 4}
-                        fill="var(--quasar)"
-                        style={{ transition: 'r 0.2s ease', filter: 'drop-shadow(0 0 8px oklch(0.8 0.16 305 / 0.8))' }}
-                      />
-                    )
-                  })}
-
-                {axisKeys.map((k, i) => {
-                  const p = polar(MAX_R + 26, (360 / axisKeys.length) * i)
-                  const anchor = p.x < CX - 10 ? 'end' : p.x > CX + 10 ? 'start' : 'middle'
-                  const delta = client[k] - avg[k]
-                  return (
-                    <g
-                      key={k}
-                      onMouseEnter={() => setHoverAxis(i)}
-                      onMouseLeave={() => setHoverAxis(null)}
-                      style={{ cursor: 'default' }}
-                    >
-                      <rect x={p.x - 46} y={p.y - 16} width="92" height="30" fill="transparent" />
-                      <text
-                        x={p.x}
-                        y={p.y}
-                        fill={hoverAxis === i ? 'var(--foreground)' : 'var(--muted-foreground)'}
-                        fontSize="12"
-                        fontFamily="var(--font-sans)"
-                        textAnchor={anchor}
-                      >
-                        {axisLabels[i]}
-                      </text>
-                      <text
-                        x={p.x}
-                        y={p.y + 13}
-                        fill={delta >= 0 ? 'var(--nova)' : 'var(--pulsar)'}
-                        fontSize="10"
-                        fontFamily="var(--font-mono)"
-                        textAnchor={anchor}
-                      >
-                        {delta >= 0 ? '+' : ''}
-                        {delta}
-                      </text>
-                    </g>
-                  )
-                })}
-              </svg>
+        {/* ── Cumplimiento de estándares ── */}
+        <Reveal delay={60}>
+          <div className="glass mt-8 rounded-3xl p-6" style={{ border: '1px solid var(--border)' }}>
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-mono text-[10px] tracking-[0.16em]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  CUMPLIMIENTO DE ESTÁNDARES PÚBLICOS
+                </p>
+                <p className="mt-1 text-[13px]" style={{ color: 'var(--muted-foreground)' }}>
+                  Cada umbral tiene fuente. Seleccione una métrica para ver por qué importa.
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="font-mono text-3xl font-bold tabular-nums text-gradient-quasar">{bScore}</p>
+                <p className="font-mono text-[9px] tracking-[0.12em]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  DE 100
+                </p>
+              </div>
             </div>
-          </Reveal>
 
-          <Reveal delay={160}>
-            <div className="flex flex-col gap-5">
-              <div className="flex flex-col gap-2">
-                {SERIES.map((s) => (
+            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+              {metrics.map(m => {
+                const meta = VERDICT_META[m.verdict]
+                const open = openMetric === m.key
+                return (
                   <button
-                    key={s.key}
+                    key={m.key}
                     type="button"
-                    onClick={() => setVisible((v) => ({ ...v, [s.key]: !v[s.key] }))}
-                    aria-pressed={visible[s.key]}
-                    className={cn(
-                      'group flex items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all duration-300',
-                      visible[s.key] ? 'opacity-100' : 'opacity-45 hover:opacity-75',
-                    )}
+                    onClick={() => setOpenMetric(open ? null : m.key)}
+                    aria-expanded={open}
+                    className="rounded-2xl p-4 text-left transition-colors"
                     style={{
-                      background: visible[s.key] ? 'oklch(1 0 0 / 0.04)' : 'transparent',
-                      border: `1px solid ${visible[s.key] ? 'var(--border)' : 'transparent'}`,
+                      background: open ? 'oklch(1 0 0 / 0.05)' : 'oklch(1 0 0 / 0.025)',
+                      border: `1px solid ${open ? meta.color : 'var(--border)'}`,
                     }}
                   >
-                    <span
-                      className="size-3 shrink-0 rounded-[3px]"
-                      style={{
-                        background: s.color,
-                        boxShadow: visible[s.key] ? `0 0 12px 2px ${s.color}` : 'none',
-                      }}
-                    />
-                    <span className="text-[14px] font-medium">{s.label}</span>
-                    <span className="text-muted-foreground/60 ml-auto font-mono text-[10px]">
-                      {visible[s.key] ? 'VISIBLE' : 'OCULTO'}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Axis glossary */}
-              <div className="flex flex-col gap-1.5 mt-1">
-                {[
-                  { axis: 'Velocidad', icon: '⚡', explain: '¿Cuánto espera el visitante para ver tu sitio? Cada segundo de espera = más rebotes.' },
-                  { axis: 'SEO', icon: '🔍', explain: '¿Google te encuentra antes que a tus competidores? Define cuánto tráfico gratuito recibes.' },
-                  { axis: 'Confianza', icon: '🛡️', explain: 'HTTPS, reseñas, certificados, datos de contacto claros. Sin esto, el visitante se va.' },
-                  { axis: 'UX', icon: '🖥️', explain: '¿Es fácil navegar en móvil? El 70% de tus visitantes llegan desde el celular.' },
-                  { axis: 'Conversión', icon: '🎯', explain: '¿Hay CTAs claros? Sin botones visibles, el interesado no sabe cómo contactarte.' },
-                  { axis: 'Contenido', icon: '📄', explain: '¿Explica claramente qué ofreces y para quién? El copy decide si el visitante se queda.' },
-                ].map((a) => (
-                  <div key={a.axis} className="flex items-start gap-2 rounded-xl px-3 py-1.5" style={{ background: 'oklch(1 0 0 / 0.03)' }}>
-                    <span className="text-[12px] shrink-0 mt-0.5">{a.icon}</span>
-                    <div>
-                      <span className="font-mono text-[10px] font-bold" style={{ color: 'var(--star)' }}>{a.axis.toUpperCase()}</span>
-                      <span className="text-muted-foreground/70 text-[11px]"> — {a.explain}</span>
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-[12.5px] font-medium leading-snug">{m.label}</span>
+                      <Info className="mt-0.5 size-3 shrink-0" style={{ color: 'rgba(255,255,255,0.25)' }} aria-hidden />
                     </div>
-                  </div>
-                ))}
-              </div>
-              <p className="text-muted-foreground text-[13px] leading-relaxed text-pretty mt-2">
-                Tu sitio supera el benchmark estimado en <span className="text-nova font-semibold">SEO y contenido</span>, pero cae por debajo en <span className="text-pulsar font-semibold">velocidad, confianza y UX</span> — exactamente donde los competidores te están ganando tráfico.
-              </p>
-            </div>
-          </Reveal>
-        </div>
-
-        {/* Benchmark table */}
-        <Reveal delay={80} className="mt-10 block">
-          <div
-            className="glass overflow-hidden rounded-3xl"
-            style={{ border: '1px solid var(--border)' }}
-          >
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] border-collapse text-left">
-                <caption className="text-muted-foreground/70 border-border/70 border-b px-5 py-4 text-left font-mono text-[11px] tracking-[0.16em]">
-                  BENCHMARKS DIRECTOS · LÍDER / GAP POR MÉTRICA
-                  <span className="ml-3 font-mono text-[9px] tracking-normal normal-case" style={{ color: 'oklch(0.85 0.13 88 / 0.7)' }}>
-                    · N/M = sitio no respondió durante el escaneo
-                  </span>
-                </caption>
-                <thead>
-                  <tr>
-                    <td colSpan={5} className="px-5 py-3 text-[11.5px] leading-relaxed" style={{ color: 'var(--muted-foreground)', background: 'oklch(0.88 0.14 195 / 0.05)', borderBottom: '1px solid var(--border)' }}>
-                      <strong style={{ color: 'var(--star)' }}>Metodología: </strong>{competitiveBenchmarkNote}
-                    </td>
-                  </tr>
-                  <tr className="border-border/70 border-b">
-                    <th scope="col" className="text-muted-foreground/60 px-5 py-3 font-mono text-[10px] tracking-[0.14em]">
-                      MÉTRICA
-                    </th>
-                    {compareColumns.map((c) => (
-                      <th
-                        key={c.key}
-                        scope="col"
-                        className="px-4 py-3 text-center font-mono text-[10px] tracking-[0.14em]"
-                        style={{
-                          color: c.key === 'client' ? 'var(--quasar)' : 'var(--muted-foreground)',
-                          background: c.key === 'client' ? 'oklch(0.8 0.16 305 / 0.07)' : undefined,
-                        }}
-                      >
-                        {c.label}
-                        <span className="text-muted-foreground/50 mt-1 block text-[9px] font-normal tracking-normal normal-case">
-                          {c.threat}
-                        </span>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {compareRows.map((row) => {
-                    const values = [row.client, row.a, row.b, row.top]
-                    const numeric = values.filter((v): v is number => v !== null)
-                    const max = numeric.length ? Math.max(...numeric) : 0
-                    const min = numeric.length ? Math.min(...numeric) : 0
-                    // TTFB (ms): menor es mejor — invierte la polaridad líder/gap y la barra
-                    const lowerIsBetter = row.unit === 'ms'
-                    return (
-                      <tr key={row.label} className="border-border/50 hover:bg-foreground/[0.03] border-b transition-colors">
-                        <th scope="row" className="text-muted-foreground px-5 py-4 text-[13.5px] font-medium">
-                          {row.label}
-                        </th>
-                        {values.map((v, i) => {
-                          if (v === null) {
-                            return (
-                              <td key={i} className="px-4 py-4 text-center align-middle">
-                                <span className="font-mono text-[12px] font-bold" style={{ color: 'var(--muted-foreground)' }}>N/M</span>
-                                <span className="mt-1 block font-mono text-[9px]" style={{ color: 'oklch(0.72 0.03 272 / 0.5)' }}>no medido</span>
-                              </td>
-                            )
-                          }
-                          const isLeader = lowerIsBetter ? v === min : v === max
-                          const isGap = lowerIsBetter ? v === max : v === min
-                          const badgeColor = isLeader ? 'var(--nova)' : 'var(--pulsar)'
-                          const barPct = lowerIsBetter
-                            ? (max === min ? 100 : ((max - v) / (max - min)) * 100)
-                            : (v / max) * 100
-                          return (
-                            <td
-                              key={i}
-                              className="px-4 py-4 text-center align-middle"
-                              style={{ background: i === 0 ? 'oklch(0.8 0.16 305 / 0.06)' : undefined }}
-                            >
-                              <span className="font-mono text-[15px] font-bold tabular-nums">
-                                {v}
-                                <span className="text-muted-foreground/50 text-[10px]">{row.unit}</span>
-                              </span>
-                              <span
-                                className="mx-auto mt-2 block h-1 max-w-16 overflow-hidden rounded-full"
-                                style={{ background: 'oklch(1 0 0 / 0.07)' }}
-                              >
-                                <span
-                                  className="block h-full rounded-full"
-                                  style={{
-                                    width: `${barPct}%`,
-                                    background: i === 0 ? 'var(--quasar)' : 'oklch(0.72 0.03 272)',
-                                  }}
-                                />
-                              </span>
-                              {(isLeader || isGap) && (
-                                <span
-                                  className="mt-2 inline-block rounded-full px-2 py-0.5 font-mono text-[9px] font-bold"
-                                  style={{
-                                    background: isLeader ? 'oklch(0.86 0.19 155 / 0.12)' : 'oklch(0.72 0.2 15 / 0.12)',
-                                    color: badgeColor,
-                                  }}
-                                >
-                                  {isLeader ? 'LÍDER' : 'GAP'}
-                                </span>
-                              )}
-                            </td>
-                          )
-                        })}
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+                    <div className="mt-2 flex items-baseline gap-2">
+                      <span className="font-mono text-lg font-bold tabular-nums" style={{ color: meta.color }}>
+                        {m.format(m.value)}
+                      </span>
+                      <span className="font-mono text-[9px] tracking-[0.1em]" style={{ color: meta.color }}>
+                        {meta.label}
+                      </span>
+                    </div>
+                    <p className="mt-1.5 font-mono text-[9.5px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                      objetivo {m.lowerIsBetter ? '≤' : '≥'} {m.format(m.good)} · {m.source}
+                    </p>
+                    {open && (
+                      <p className="mt-2.5 border-t pt-2.5 text-[11.5px] leading-relaxed" style={{ borderColor: 'var(--border)', color: 'rgba(255,255,255,0.6)' }}>
+                        {m.why}
+                      </p>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </Reveal>
 
-        {/* Reference DNA */}
-        <div className="mt-10">
-          <Reveal>
-            <div className="text-muted-foreground/60 mb-5 font-mono text-[11px] tracking-[0.18em]">
-              REFERENCE DNA · CUERPOS EN TU CAMPO GRAVITATORIO
-            </div>
-          </Reveal>
-          <p className="text-muted-foreground/50 mb-5 font-mono text-[10px] leading-relaxed">
-            Dominios reales verificados por fetch en vivo el 17/08/2026. El score es el mismo Score Global automatizado de la tabla de arriba (no un índice editorial). ADMIRE/ADAPT/AVOID son observación cualitativa del equipo, marcada como tal — no son datos medidos.
-          </p>
-          <div className="grid gap-4 md:grid-cols-3">
-            {references.map((r, i) => (
-              <Reveal key={r.domain} delay={i * 110}>
-                <TiltCard glow="oklch(0.88 0.14 195 / 0.28)" className="glass h-full rounded-3xl p-5">
-                  <div
-                    className="relative grid h-24 place-items-center overflow-hidden rounded-2xl"
+        {/* ── Competidores reales ── */}
+        <Reveal delay={100}>
+          <div className="glass mt-5 rounded-3xl p-6" style={{ border: '1px solid var(--border)' }}>
+            <p className="font-mono text-[10px] tracking-[0.16em]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              COMPARACIÓN DIRECTA
+            </p>
+            <p className="mt-1 mb-4 text-[13px] leading-relaxed" style={{ color: 'var(--muted-foreground)' }}>
+              Agregue hasta {MAX_COMPETIDORES} competidores. Cada uno se analiza en vivo con el mismo motor y los
+              mismos criterios, así la comparación es pareja y verificable.
+            </p>
+
+            <form onSubmit={handleAdd} className="flex flex-wrap gap-2">
+              <div className="relative min-w-[220px] flex-1">
+                <Search size={14} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
+                <input
+                  type="text"
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  placeholder="competidor.com"
+                  disabled={competitors.length >= MAX_COMPETIDORES}
+                  aria-label="Dominio del competidor"
+                  className="w-full rounded-xl py-2.5 pr-3 pl-9 font-mono text-[13px] text-white placeholder:text-gray-600 focus:outline-none disabled:opacity-40"
+                  style={{ background: 'oklch(0.12 0.01 265 / 0.8)', border: '1px solid var(--border)' }}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={!input.trim() || competitors.length >= MAX_COMPETIDORES}
+                className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 font-mono text-[12px] font-semibold text-white transition-opacity disabled:opacity-40"
+                style={{ background: 'linear-gradient(135deg,#7C3AED,#5B2DBA)' }}
+              >
+                <Plus size={14} /> Comparar
+              </button>
+            </form>
+
+            {competitors.length >= MAX_COMPETIDORES && (
+              <p className="mt-2 font-mono text-[10px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                Máximo {MAX_COMPETIDORES} competidores por análisis.
+              </p>
+            )}
+
+            {/* Chips de estado */}
+            {competitors.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {competitors.map(c => (
+                  <span
+                    key={c.domain}
+                    className="flex items-center gap-2 rounded-full px-3 py-1.5 font-mono text-[11px]"
                     style={{
-                      background:
-                        'radial-gradient(circle at 30% 25%, oklch(0.3 0.06 288), oklch(0.17 0.03 278) 70%)',
+                      background: 'oklch(1 0 0 / 0.04)',
+                      border: `1px solid ${c.status === 'error' ? 'oklch(0.72 0.2 15 / 0.4)' : 'var(--border)'}`,
+                      color: c.status === 'error' ? 'var(--pulsar)' : 'var(--muted-foreground)',
                     }}
                   >
-                    <span
-                      aria-hidden
-                      className="animate-reverse-spin absolute inset-3 rounded-full border border-dashed"
-                      style={{ borderColor: 'oklch(0.88 0.14 195 / 0.3)' }}
-                    />
-                    <a
-                      href={r.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-muted-foreground hover:text-foreground relative font-mono text-[11px] underline decoration-dotted underline-offset-2 transition-colors"
-                    >
-                      {r.domain} ↗
-                    </a>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className="text-accent font-mono text-[10px] tracking-[0.12em]">{r.orbit.toUpperCase()}</span>
-                    {r.status === 'medido' ? (
-                      <span className="text-muted-foreground/60 font-mono text-[10px]" title="Score Global automatizado — mismo dato de la tabla de benchmarks">
-                        SCORE {r.score}/100
-                      </span>
-                    ) : (
-                      <span className="font-mono text-[10px]" style={{ color: 'var(--pulsar)' }} title="El dominio no respondió durante el escaneo automatizado">
-                        SIN DATOS
-                      </span>
+                    {c.status === 'escaneando' && <Loader2 size={11} className="animate-spin" />}
+                    {c.status === 'error' && <X size={11} />}
+                    {c.domain}
+                    {c.status === 'listo' && c.result && (
+                      <strong style={{ color: 'var(--star)' }}>{c.result.scores.overall}</strong>
                     )}
-                  </div>
-                  <div className="mt-2 h-1 overflow-hidden rounded-full" style={{ background: 'oklch(1 0 0 / 0.07)' }}>
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: r.score !== null ? `${r.score}%` : '100%',
-                        background: r.score !== null
-                          ? 'linear-gradient(90deg, oklch(0.88 0.14 195), oklch(0.8 0.16 305))'
-                          : 'repeating-linear-gradient(45deg, oklch(0.72 0.2 15 / 0.35) 0 6px, transparent 6px 12px)',
-                      }}
-                    />
-                  </div>
+                    <button
+                      type="button"
+                      onClick={() => removeCompetitor(c.domain)}
+                      aria-label={`Quitar ${c.domain}`}
+                      className="opacity-50 transition-opacity hover:opacity-100"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
 
-                  <ul className="mt-4 flex flex-col gap-2">
-                    {[
-                      { tag: 'ADMIRE', value: r.admire, color: 'var(--nova)' },
-                      { tag: 'ADAPT', value: r.adapt, color: 'var(--star)' },
-                      { tag: 'AVOID', value: r.avoid, color: 'var(--pulsar)' },
-                    ].map((row) => (
-                      <li key={row.tag} className="flex items-center gap-2 text-[12.5px]">
-                        <span
-                          className="rounded-full px-2 py-0.5 font-mono text-[9px] font-bold"
-                          style={{ background: `color-mix(in oklch, ${row.color} 14%, transparent)`, color: row.color }}
-                        >
-                          {row.tag}
-                        </span>
-                        <span className="text-muted-foreground">{row.value}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </TiltCard>
-              </Reveal>
-            ))}
+            {competitors.some(c => c.status === 'error') && (
+              <p className="mt-2 text-[11.5px]" style={{ color: 'var(--pulsar)' }}>
+                {competitors.find(c => c.status === 'error')?.error}
+              </p>
+            )}
+
+            {/* Tabla comparativa */}
+            {listos.length > 0 ? (
+              <div className="mt-6 overflow-x-auto">
+                <table className="w-full min-w-[560px] border-collapse text-left">
+                  <thead>
+                    <tr className="border-border/70 border-b">
+                      <th scope="col" className="px-3 py-2.5 font-mono text-[10px] tracking-[0.12em]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                        MÉTRICA
+                      </th>
+                      <th scope="col" className="px-3 py-2.5 text-center font-mono text-[10px] tracking-[0.12em]" style={{ color: 'var(--quasar)', background: 'oklch(0.8 0.16 305 / 0.07)' }}>
+                        {scanResult.domain.toUpperCase()}
+                      </th>
+                      {listos.map(c => (
+                        <th key={c.domain} scope="col" className="px-3 py-2.5 text-center font-mono text-[10px] tracking-[0.12em]" style={{ color: 'var(--muted-foreground)' }}>
+                          {c.domain.toUpperCase()}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {COMPARABLE_LABELS.map(({ key, label, lowerIsBetter, fmt }) => {
+                      const mine = comparableRow(scanResult)[key]
+                      const theirs = listos.map(c => comparableRow(c.result!)[key])
+                      const all = [mine, ...theirs]
+                      const nums = all.filter((v): v is number => typeof v === 'number')
+                      const best = nums.length
+                        ? (lowerIsBetter ? Math.min(...nums) : Math.max(...nums))
+                        : null
+
+                      const cell = (v: number | boolean, isMine: boolean) => {
+                        const isBest = typeof v === 'number' ? v === best : v === true
+                        return (
+                          <td
+                            key={`${key}-${isMine ? 'me' : Math.random()}`}
+                            className="px-3 py-3 text-center align-middle"
+                            style={{ background: isMine ? 'oklch(0.8 0.16 305 / 0.06)' : undefined }}
+                          >
+                            <span
+                              className="font-mono text-[13px] font-semibold tabular-nums"
+                              style={{ color: isBest ? 'var(--nova)' : 'rgba(255,255,255,0.75)' }}
+                            >
+                              {fmt(v)}
+                            </span>
+                            {isBest && nums.length > 1 && (
+                              <span className="mt-1 block font-mono text-[8.5px]" style={{ color: 'var(--nova)' }}>
+                                MEJOR
+                              </span>
+                            )}
+                          </td>
+                        )
+                      }
+
+                      return (
+                        <tr key={key} className="border-border/50 border-b">
+                          <th scope="row" className="px-3 py-3 text-[12.5px] font-medium" style={{ color: 'var(--muted-foreground)' }}>
+                            {label}
+                          </th>
+                          {cell(mine, true)}
+                          {listos.map((c, i) => cell(theirs[i], false))}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+                <p className="mt-3 font-mono text-[10px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  Todos los sitios se midieron con el mismo motor el {new Date(scanResult.scanDate).toLocaleDateString('es-BO')}.
+                  Son datos observados en el HTML servido, no estimaciones.
+                </p>
+              </div>
+            ) : (
+              competitors.length === 0 && (
+                <div
+                  className="mt-5 rounded-2xl px-5 py-8 text-center"
+                  style={{ background: 'oklch(1 0 0 / 0.02)', border: '1px dashed var(--border)' }}
+                >
+                  <p className="text-[13px]" style={{ color: 'var(--muted-foreground)' }}>
+                    Sin competidores cargados todavía.
+                  </p>
+                  <p className="mx-auto mt-1.5 max-w-md text-[12px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                    Preferimos no mostrar competidores inventados. Agregue los dominios con los que compite de
+                    verdad y se miden en el momento.
+                  </p>
+                </div>
+              )
+            )}
           </div>
-        </div>
+        </Reveal>
       </div>
     </section>
   )

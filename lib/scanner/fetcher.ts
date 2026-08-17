@@ -221,6 +221,7 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
   // Links (rel=nofollow separado: no transmite autoridad)
   const allLinks = $('a[href]')
   let internalLinks = 0, externalLinks = 0, externalNofollow = 0
+  const internalSet = new Set<string>()
   allLinks.each((_, el) => {
     const href = $(el).attr('href') ?? ''
     const rel = ($(el).attr('rel') ?? '').toLowerCase()
@@ -230,8 +231,20 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
       if (rel.includes('nofollow')) externalNofollow++
     } else if (href.startsWith('/') || href.includes(dom)) {
       internalLinks++
+      // Se guardan las rutas internas reales para poder capturar páginas
+      // distintas y no repetir tres veces la portada.
+      try {
+        const abs = new URL(href, url)
+        if (abs.hostname.replace(/^www\./, '') !== dom) return
+        const clean = abs.origin + abs.pathname.replace(/\/$/, '')
+        if (clean === new URL(url).origin) return          // la portada ya se captura aparte
+        if (/\.(pdf|jpe?g|png|gif|svg|zip|docx?|xlsx?)$/i.test(abs.pathname)) return
+        if (abs.pathname.split('/').filter(Boolean).length > 2) return  // evita rutas muy profundas
+        internalSet.add(clean)
+      } catch {}
     }
   })
+  const internalUrls = [...internalSet].slice(0, 12)
 
   // ── Word count ──
   // Se hace al final: remove() destruye nodos y todo lo que dependa de
@@ -284,6 +297,7 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
     inlineStyleCount,
     emailsInPlainText,
     externalNofollow,
+    internalUrls,
     llmsTxtExists,
     hasSchema,
     schemaTypes,

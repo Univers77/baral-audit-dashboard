@@ -2,36 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Search, Loader2, ChevronDown, ChevronUp, Clock, Globe, AlertTriangle, CheckCircle2, XCircle, Sparkles, Target, Zap, TrendingUp, ShieldAlert, BarChart2 } from 'lucide-react'
-import type { AuditResult, DeviceShots } from '@/lib/scanner/types'
-import { DeviceRendering } from './device-rendering'
-
-/**
- * Resultados cacheados en sessionStorage por versiones previas traen solo
- * `screenshotUrl`. Derivamos los tres viewports para que no se rompan.
- */
-function resolveShots(raw: AuditResult['raw']): DeviceShots | null {
-  if (raw.screenshots?.desktop) return raw.screenshots
-  if (!raw.url) return null
-  const build = (w: number, h: number, isMobile: boolean, scale: number) =>
-    `https://api.microlink.io/?${new URLSearchParams({
-      url: raw.url,
-      screenshot: 'true',
-      meta: 'false',
-      'viewport.width': String(w),
-      'viewport.height': String(h),
-      'viewport.deviceScaleFactor': String(scale),
-      'viewport.isMobile': String(isMobile),
-      'viewport.hasTouch': String(isMobile),
-      waitForTimeout: '3500',
-      type: 'jpeg',
-      embed: 'screenshot.url',
-    })}`
-  return {
-    mobile: build(390, 844, true, 2),
-    tablet: build(820, 1180, true, 2),
-    desktop: build(1440, 900, false, 1),
-  }
-}
+import type { AuditResult } from '@/lib/scanner/types'
 
 type ProgressMsg = { step: number; total: number; message: string; pct: number }
 type HistoryEntry = { domain: string; url: string; scanDate: string; overall: number }
@@ -190,11 +161,11 @@ export function UrlScanner({ onResult }: { onResult?: (r: AuditResult) => void }
             RADIOGRAFÍA DIGITAL · BARAL
           </div>
           <h2 className="font-display mb-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl text-balance">
-            ¿Tu web está trabajando para vos?
+            ¿Su sitio web está trabajando para usted?
           </h2>
           <p className="mx-auto max-w-lg text-[14px] leading-relaxed text-pretty" style={{ color: 'var(--muted-foreground)' }}>
             Es lo primero que hacemos con cada cliente: una radiografía completa antes de tocar nada.
-            Poné tu dirección y vemos juntos qué encontramos.
+            Ingrese su dirección y revisamos juntos qué encontramos.
           </p>
         </div>
 
@@ -297,12 +268,6 @@ export function UrlScanner({ onResult }: { onResult?: (r: AuditResult) => void }
         {/* Result panel */}
         {result && (
           <div ref={resultRef} className="space-y-3">
-
-            {/* Render por dispositivo — evidencia visual del sitio auditado */}
-            {(() => {
-              const shots = resolveShots(result.raw)
-              return shots ? <DeviceRendering shots={shots} domain={result.domain} /> : null
-            })()}
 
             {/* Score header */}
             <div

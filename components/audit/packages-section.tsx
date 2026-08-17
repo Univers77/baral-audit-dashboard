@@ -24,10 +24,10 @@ export function PackagesSection({ scanResult }: { scanResult: AuditResult | null
             eyebrow="Siguiente paso"
             title={
               <>
-                Elegí hasta dónde querés <span className="text-gradient-quasar">llevar el diagnóstico</span>
+                Hasta dónde llevar <span className="text-gradient-quasar">el diagnóstico</span>
               </>
             }
-            description="Lo que acabás de leer es la radiografía automática. Sirve para saber qué está roto — no para arreglarlo. Estos son los tres niveles de acompañamiento, y cuál corresponde según lo que el escaneo encontró en tu sitio."
+            description="Lo anterior es la radiografía automática: sirve para saber qué está roto, no para arreglarlo. Estos son los tres niveles de acompañamiento, y cuál corresponde según lo que el escaneo encontró en el sitio."
           />
         </Reveal>
 
@@ -144,7 +144,7 @@ export function PackagesSection({ scanResult }: { scanResult: AuditResult | null
                       className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 font-mono text-[9px] font-bold tracking-[0.14em] whitespace-nowrap"
                       style={{ background: accent, color: '#0a0b14' }}
                     >
-                      RECOMENDADO PARA VOS
+                      RECOMENDADO PARA USTED
                     </span>
                   )}
 
@@ -299,7 +299,7 @@ export function PackagesSection({ scanResult }: { scanResult: AuditResult | null
                 {
                   t: 'Herramienta automática',
                   p: 'Desde $0',
-                  d: 'Un informe generado por software. Te dice qué está mal, en inglés y sin contexto de tu negocio. Nadie interpreta el resultado ni prioriza por vos.',
+                  d: 'Un informe generado por software. Indica qué está mal, en inglés y sin contexto del negocio. Nadie interpreta el resultado ni establece prioridades.',
                   tone: 'rgba(255,255,255,0.35)',
                 },
                 {
