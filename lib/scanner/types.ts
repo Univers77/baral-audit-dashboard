@@ -41,8 +41,20 @@ export interface RawScan {
   sitemapExists: boolean
   // Raw HTML (truncated for analysis)
   htmlSnippet: string
-  // Screenshot URL (thum.io, no key needed)
+  // Screenshot URL — alias de screenshots.desktop (compatibilidad)
   screenshotUrl: string
+  // Renders por dispositivo: cada uno se captura con el viewport real del
+  // dispositivo, así se disparan los breakpoints responsive del sitio y el
+  // render de móvil difiere del de desktop (misma técnica que SEOptimer).
+  screenshots: DeviceShots
+}
+
+export type DeviceKey = 'mobile' | 'tablet' | 'desktop'
+
+export interface DeviceShots {
+  mobile: string
+  tablet: string
+  desktop: string
 }
 
 export interface ScanError {

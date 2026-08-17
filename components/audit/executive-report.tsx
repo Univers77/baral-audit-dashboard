@@ -168,6 +168,56 @@ export function ExecutiveReport({ scanResult, ga4Data }: { scanResult: AuditResu
         )}
       </section>
 
+      {/* ── EVIDENCIA VISUAL ── */}
+      {r.raw.screenshots?.desktop && (
+        <section style={{ breakAfter: 'page', padding: '20px 8px' }}>
+          <PageHeader domain={r.domain} />
+          <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 4px' }}>Evidencia visual — render por dispositivo</h2>
+          <p style={{ fontSize: 11, color: MUTED, marginBottom: 16, lineHeight: 1.5 }}>
+            Cada captura se tomó con el viewport y el user-agent del dispositivo indicado, activando los
+            breakpoints responsive reales del sitio. Sirve como constancia del estado del sitio en la fecha
+            de la auditoría.
+          </p>
+
+          <div style={{ marginBottom: 14, breakInside: 'avoid' }}>
+            <p style={{ fontSize: 10, fontFamily: 'monospace', color: MUTED, marginBottom: 6, letterSpacing: 1 }}>
+              ESCRITORIO · 1440 × 900
+            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={r.raw.screenshots.desktop}
+              alt={`Render de ${r.domain} en escritorio`}
+              style={{ width: '100%', border: `1px solid ${BORDER}`, borderRadius: 6, display: 'block' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: 14, breakInside: 'avoid' }}>
+            <div style={{ flex: '0 0 30%' }}>
+              <p style={{ fontSize: 10, fontFamily: 'monospace', color: MUTED, marginBottom: 6, letterSpacing: 1 }}>
+                MÓVIL · 390 × 844
+              </p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={r.raw.screenshots.mobile}
+                alt={`Render de ${r.domain} en móvil`}
+                style={{ width: '100%', border: `1px solid ${BORDER}`, borderRadius: 6, display: 'block' }}
+              />
+            </div>
+            <div style={{ flex: '0 0 45%' }}>
+              <p style={{ fontSize: 10, fontFamily: 'monospace', color: MUTED, marginBottom: 6, letterSpacing: 1 }}>
+                TABLET · 820 × 1180
+              </p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={r.raw.screenshots.tablet}
+                alt={`Render de ${r.domain} en tablet`}
+                style={{ width: '100%', border: `1px solid ${BORDER}`, borderRadius: 6, display: 'block' }}
+              />
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* ── P0 FINDINGS ── */}
       {r.findings.filter(f => f.priority === 'P0').length > 0 && (
         <section style={{ breakAfter: 'page', padding: '20px 8px' }}>

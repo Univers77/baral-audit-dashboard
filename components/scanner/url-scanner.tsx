@@ -2,7 +2,36 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Search, Loader2, ChevronDown, ChevronUp, Clock, Globe, AlertTriangle, CheckCircle2, XCircle, Sparkles, Target, Zap, TrendingUp, ShieldAlert, BarChart2 } from 'lucide-react'
-import type { AuditResult } from '@/lib/scanner/types'
+import type { AuditResult, DeviceShots } from '@/lib/scanner/types'
+import { DeviceRendering } from './device-rendering'
+
+/**
+ * Resultados cacheados en sessionStorage por versiones previas traen solo
+ * `screenshotUrl`. Derivamos los tres viewports para que no se rompan.
+ */
+function resolveShots(raw: AuditResult['raw']): DeviceShots | null {
+  if (raw.screenshots?.desktop) return raw.screenshots
+  if (!raw.url) return null
+  const build = (w: number, h: number, isMobile: boolean, scale: number) =>
+    `https://api.microlink.io/?${new URLSearchParams({
+      url: raw.url,
+      screenshot: 'true',
+      meta: 'false',
+      'viewport.width': String(w),
+      'viewport.height': String(h),
+      'viewport.deviceScaleFactor': String(scale),
+      'viewport.isMobile': String(isMobile),
+      'viewport.hasTouch': String(isMobile),
+      waitForTimeout: '3500',
+      type: 'jpeg',
+      embed: 'screenshot.url',
+    })}`
+  return {
+    mobile: build(390, 844, true, 2),
+    tablet: build(820, 1180, true, 2),
+    desktop: build(1440, 900, false, 1),
+  }
+}
 
 type ProgressMsg = { step: number; total: number; message: string; pct: number }
 type HistoryEntry = { domain: string; url: string; scanDate: string; overall: number }
@@ -268,52 +297,17 @@ export function UrlScanner({ onResult }: { onResult?: (r: AuditResult) => void }
         {result && (
           <div ref={resultRef} className="space-y-3">
 
-            {/* Screenshot + Score header */}
+            {/* Render por dispositivo — evidencia visual del sitio auditado */}
+            {(() => {
+              const shots = resolveShots(result.raw)
+              return shots ? <DeviceRendering shots={shots} domain={result.domain} /> : null
+            })()}
+
+            {/* Score header */}
             <div
               className="glass rounded-2xl overflow-hidden"
               style={{ border: '1px solid var(--border)' }}
             >
-              {/* Browser chrome + screenshot */}
-              <div className="overflow-hidden" style={{ background: '#0d0e1f' }}>
-                {/* Browser top bar */}
-                <div className="flex items-center gap-2 px-3 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', background: '#13142a' }}>
-                  <div className="flex gap-1.5 shrink-0">
-                    <div className="size-2.5 rounded-full" style={{ background: '#ff5f57' }} />
-                    <div className="size-2.5 rounded-full" style={{ background: '#febc2e' }} />
-                    <div className="size-2.5 rounded-full" style={{ background: '#28c840' }} />
-                  </div>
-                  <div className="flex flex-1 items-center gap-1.5 rounded-md px-2.5 py-1 min-w-0" style={{ background: '#0a0b1e', border: '1px solid rgba(255,255,255,0.08)' }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                    <span className="font-mono text-[10px] truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>{result.url}</span>
-                  </div>
-                </div>
-                {/* Screenshot — aspect-ratio coincide con el viewport pedido a Microlink (16:10)
-                    para mostrar el hero real del sitio sin recortarlo a una franja irreconocible */}
-                <div className="relative w-full overflow-hidden" style={{ aspectRatio: '16 / 10', background: '#0a0b14' }}>
-                  <img
-                    src={result.raw.screenshotUrl}
-                    alt={`Vista previa de ${result.domain}`}
-                    className="w-full h-full object-cover object-top"
-                    style={{ opacity: 0.96 }}
-                    onError={(e) => {
-                      const el = e.target as HTMLImageElement
-                      el.style.display = 'none'
-                      const parent = el.parentElement
-                      if (parent) {
-                        const fb = parent.querySelector('[data-fallback]') as HTMLElement
-                        if (fb) fb.style.display = 'flex'
-                      }
-                    }}
-                  />
-                  {/* Fallback */}
-                  <div data-fallback="" className="absolute inset-0 items-center justify-center flex-col gap-1 hidden">
-                    <Globe className="size-6" style={{ color: 'rgba(255,255,255,0.2)' }} />
-                    <span className="font-mono text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>Vista previa no disponible</span>
-                  </div>
-                  <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(to bottom, transparent 55%, #0d0e1f 100%)' }} />
-                </div>
-              </div>
-
               <div className="p-5">
               <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -479,14 +473,14 @@ export function UrlScanner({ onResult }: { onResult?: (r: AuditResult) => void }
                   )}
 
                   {/* Critical Issues */}
-                  {result.claudeEnrichment.criticalIssues?.length > 0 && (
+                  {(result.claudeEnrichment.criticalIssues?.length ?? 0) > 0 && (
                     <div className="rounded-xl p-3" style={{ background: '#f9741608', border: '1px solid #f9741622' }}>
                       <div className="mb-1.5 flex items-center gap-1.5">
                         <ShieldAlert size={11} className="text-orange-400" />
                         <span className="font-mono text-[9px] tracking-wider text-orange-400">PROBLEMAS CRÍTICOS</span>
                       </div>
                       <ul className="space-y-1">
-                        {result.claudeEnrichment.criticalIssues.map((c, i) => (
+                        {result.claudeEnrichment.criticalIssues?.map((c, i) => (
                           <li key={i} className="flex items-start gap-1.5 text-[11px]" style={{ color: '#e2e8f0aa' }}>
                             <span className="mt-0.5 shrink-0 font-mono text-[9px] text-orange-400">!</span>
                             {c}

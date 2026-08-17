@@ -1,7 +1,44 @@
 import * as cheerio from 'cheerio'
-import type { RawScan, ScanError } from './types'
+import type { RawScan, ScanError, DeviceShots } from './types'
 
 const UA = 'Mozilla/5.0 (compatible; MasterWebAuditor/2.0; +https://baralintegral.com)'
+
+// Viewports reales de dispositivo. isMobile/hasTouch hacen que el navegador
+// headless mande UA móvil y active los media queries del sitio — sin esto las
+// tres capturas saldrían idénticas al layout de escritorio.
+const DEVICE_VIEWPORTS = {
+  mobile:  { width: 390,  height: 844,  isMobile: true,  scale: 2 },
+  tablet:  { width: 820,  height: 1180, isMobile: true,  scale: 2 },
+  desktop: { width: 1440, height: 900,  isMobile: false, scale: 1 },
+} as const
+
+function deviceShotUrl(url: string, d: (typeof DEVICE_VIEWPORTS)[keyof typeof DEVICE_VIEWPORTS]): string {
+  const p = new URLSearchParams({
+    url,
+    screenshot: 'true',
+    meta: 'false',
+    'viewport.width': String(d.width),
+    'viewport.height': String(d.height),
+    'viewport.deviceScaleFactor': String(d.scale),
+    'viewport.isMobile': String(d.isMobile),
+    'viewport.hasTouch': String(d.isMobile),
+    // waitForTimeout deja que corran animaciones y lazy-load de hero.
+    // NO usar waitUntil=networkidle0: en sitios con polling/analytics nunca
+    // alcanza el idle, expira y devuelve una imagen en blanco.
+    waitForTimeout: '3500',
+    type: 'jpeg',
+    embed: 'screenshot.url',
+  })
+  return `https://api.microlink.io/?${p.toString()}`
+}
+
+function buildDeviceShots(url: string): DeviceShots {
+  return {
+    mobile:  deviceShotUrl(url, DEVICE_VIEWPORTS.mobile),
+    tablet:  deviceShotUrl(url, DEVICE_VIEWPORTS.tablet),
+    desktop: deviceShotUrl(url, DEVICE_VIEWPORTS.desktop),
+  }
+}
 
 function normalizeUrl(input: string): string {
   const s = input.trim()
@@ -139,8 +176,7 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
     robotsTxtExists,
     sitemapExists,
     htmlSnippet: htmlRaw.slice(0, 2000),
-    // Viewport 1600x1000 (16:10) coincide con el aspect-ratio del contenedor en la UI
-    // para que object-cover muestre el hero real sin recortes agresivos.
-    screenshotUrl: `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&viewport.width=1600&viewport.height=1000&waitUntil=networkidle0&embed=screenshot.url`,
+    screenshotUrl: buildDeviceShots(url).desktop,
+    screenshots: buildDeviceShots(url),
   }
 }
