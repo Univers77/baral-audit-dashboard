@@ -6,6 +6,7 @@ import {
   axisLabels,
   compareColumns,
   compareRows,
+  competitiveBenchmarkNote,
   constellationSets,
   references,
   type AxisKey,
@@ -249,10 +250,15 @@ export function CompetitiveSection() {
                 <caption className="text-muted-foreground/70 border-border/70 border-b px-5 py-4 text-left font-mono text-[11px] tracking-[0.16em]">
                   BENCHMARKS DIRECTOS · LÍDER / GAP POR MÉTRICA
                   <span className="ml-3 font-mono text-[9px] tracking-normal normal-case" style={{ color: 'oklch(0.85 0.13 88 / 0.7)' }}>
-                    · N/M = competidor no auditado · ✱ REL = relevancia editorial estimada
+                    · N/M = sitio no respondió durante el escaneo
                   </span>
                 </caption>
                 <thead>
+                  <tr>
+                    <td colSpan={5} className="px-5 py-3 text-[11.5px] leading-relaxed" style={{ color: 'var(--muted-foreground)', background: 'oklch(0.88 0.14 195 / 0.05)', borderBottom: '1px solid var(--border)' }}>
+                      <strong style={{ color: 'var(--star)' }}>Metodología: </strong>{competitiveBenchmarkNote}
+                    </td>
+                  </tr>
                   <tr className="border-border/70 border-b">
                     <th scope="col" className="text-muted-foreground/60 px-5 py-3 font-mono text-[10px] tracking-[0.14em]">
                       MÉTRICA
@@ -281,6 +287,8 @@ export function CompetitiveSection() {
                     const numeric = values.filter((v): v is number => v !== null)
                     const max = numeric.length ? Math.max(...numeric) : 0
                     const min = numeric.length ? Math.min(...numeric) : 0
+                    // TTFB (ms): menor es mejor — invierte la polaridad líder/gap y la barra
+                    const lowerIsBetter = row.unit === 'ms'
                     return (
                       <tr key={row.label} className="border-border/50 hover:bg-foreground/[0.03] border-b transition-colors">
                         <th scope="row" className="text-muted-foreground px-5 py-4 text-[13.5px] font-medium">
@@ -295,9 +303,12 @@ export function CompetitiveSection() {
                               </td>
                             )
                           }
-                          const isLeader = v === max
-                          const isGap = v === min
+                          const isLeader = lowerIsBetter ? v === min : v === max
+                          const isGap = lowerIsBetter ? v === max : v === min
                           const badgeColor = isLeader ? 'var(--nova)' : 'var(--pulsar)'
+                          const barPct = lowerIsBetter
+                            ? (max === min ? 100 : ((max - v) / (max - min)) * 100)
+                            : (v / max) * 100
                           return (
                             <td
                               key={i}
@@ -315,7 +326,7 @@ export function CompetitiveSection() {
                                 <span
                                   className="block h-full rounded-full"
                                   style={{
-                                    width: `${(v / max) * 100}%`,
+                                    width: `${barPct}%`,
                                     background: i === 0 ? 'var(--quasar)' : 'oklch(0.72 0.03 272)',
                                   }}
                                 />
@@ -350,8 +361,8 @@ export function CompetitiveSection() {
               REFERENCE DNA · CUERPOS EN TU CAMPO GRAVITATORIO
             </div>
           </Reveal>
-          <p className="text-muted-foreground/50 mb-5 font-mono text-[10px]">
-            ✱ Relevancia editorial (0–100): estimación cualitativa basada en presencia web, SEO visible y actividad de contenido. No es un índice medido — los datos verificables de cada competidor requieren auditoría propia.
+          <p className="text-muted-foreground/50 mb-5 font-mono text-[10px] leading-relaxed">
+            Dominios reales verificados por fetch en vivo el 17/08/2026. El score es el mismo Score Global automatizado de la tabla de arriba (no un índice editorial). ADMIRE/ADAPT/AVOID son observación cualitativa del equipo, marcada como tal — no son datos medidos.
           </p>
           <div className="grid gap-4 md:grid-cols-3">
             {references.map((r, i) => (
@@ -369,19 +380,36 @@ export function CompetitiveSection() {
                       className="animate-reverse-spin absolute inset-3 rounded-full border border-dashed"
                       style={{ borderColor: 'oklch(0.88 0.14 195 / 0.3)' }}
                     />
-                    <span className="text-muted-foreground relative font-mono text-[11px]">{r.domain}</span>
+                    <a
+                      href={r.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-muted-foreground hover:text-foreground relative font-mono text-[11px] underline decoration-dotted underline-offset-2 transition-colors"
+                    >
+                      {r.domain} ↗
+                    </a>
                   </div>
 
                   <div className="mt-4 flex items-center justify-between">
                     <span className="text-accent font-mono text-[10px] tracking-[0.12em]">{r.orbit.toUpperCase()}</span>
-                    <span className="text-muted-foreground/60 font-mono text-[10px]" title="Relevancia editorial estimada — no es un índice medido">REL {r.gravity}/100 ✱</span>
+                    {r.status === 'medido' ? (
+                      <span className="text-muted-foreground/60 font-mono text-[10px]" title="Score Global automatizado — mismo dato de la tabla de benchmarks">
+                        SCORE {r.score}/100
+                      </span>
+                    ) : (
+                      <span className="font-mono text-[10px]" style={{ color: 'var(--pulsar)' }} title="El dominio no respondió durante el escaneo automatizado">
+                        SIN DATOS
+                      </span>
+                    )}
                   </div>
                   <div className="mt-2 h-1 overflow-hidden rounded-full" style={{ background: 'oklch(1 0 0 / 0.07)' }}>
                     <div
                       className="h-full rounded-full"
                       style={{
-                        width: `${r.gravity}%`,
-                        background: 'linear-gradient(90deg, oklch(0.88 0.14 195), oklch(0.8 0.16 305))',
+                        width: r.score !== null ? `${r.score}%` : '100%',
+                        background: r.score !== null
+                          ? 'linear-gradient(90deg, oklch(0.88 0.14 195), oklch(0.8 0.16 305))'
+                          : 'repeating-linear-gradient(45deg, oklch(0.72 0.2 15 / 0.35) 0 6px, transparent 6px 12px)',
                       }}
                     />
                   </div>

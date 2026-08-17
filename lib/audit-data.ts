@@ -464,47 +464,75 @@ export const constellationSets: Record<string, Record<AxisKey, number>> = {
   top: { velocidad: 88, seo: 85, confianza: 90, ux: 87, conversion: 82, contenido: 78 },
 }
 
+// ── Benchmark competitivo: medido, no editorial ─────────────────────────
+// Los 3 dominios son agencias de marketing digital bolivianas reales.
+// Las columnas BARAL / AIGEN / AGC.BLUE se midieron el 17/08/2026 con el
+// MISMO motor de escaneo automatizado (fetch HTTP + heurísticas on-page:
+// title, meta description, H1, alt text, TTFB, viewport, schema, Open Graph)
+// para que la comparación sea metodológicamente justa entre los 3 sitios.
+//
+// IMPORTANTE: estos números NO coinciden con el "Score Global 36/100" que
+// aparece en el resto de este informe para Baral. Ese 36 proviene de una
+// auditoría manual + IA más profunda (bugs visuales confirmados, Core Web
+// Vitals de Lighthouse/campo, inconsistencias de NAP y marca) que un
+// escaneo automatizado de una sola pasada no puede detectar. Aquí se usa
+// el mismo método superficial en los 3 dominios para que Baral no se
+// compare en desventaja metodológica frente a competidores no auditados
+// en profundidad.
+export const competitiveBenchmarkNote =
+  'Medido automáticamente el 17/08/2026 con el mismo motor de escaneo (fetch HTTP + heurísticas on-page) aplicado a los 3 dominios — comparación metodológicamente justa. Difiere del Score Global 36/100 del resto del informe, que proviene de auditoría manual + IA más profunda (ver nota abajo).'
+
 export const compareColumns = [
-  { key: 'client', label: 'BARAL', threat: 'Sujeto auditado' },
+  { key: 'client', label: 'BARAL', threat: 'baralintegral.com — sujeto auditado' },
   { key: 'a', label: 'AIGEN', threat: 'aigendigitalmarketing.net' },
   { key: 'b', label: 'AGC.BLUE', threat: 'bolivia.agencia.blue' },
-  { key: 'top', label: 'BENCHMARK', threat: 'Referencia industria LATAM' },
+  { key: 'top', label: 'BENCHMARK', threat: 'Referencia aspiracional — no es un competidor real' },
 ] as const
 
-// COMP A = aigendigitalmarketing.net, COMP B = bolivia.agencia.blue
-// a/b = null → no medido (requiere auditoría real de cada competidor)
+// Medido en vivo el 17/08/2026. a/b = null solo si el fetch falló (sitio caído).
+// top = referencia aspiracional editorial (industria LATAM), declarada como tal.
 export const compareRows: { label: string; client: number; a: number | null; b: number | null; top: number; unit: string }[] = [
-  { label: 'Performance score', client: 45, a: null, b: null, top: 91, unit: '' },
-  { label: 'SEO score',         client: 45, a: null, b: null, top: 87, unit: '' },
-  { label: 'Trust signals',     client: 2,  a: null, b: null, top: 9,  unit: '/10' },
-  { label: 'CTA clarity',       client: 3,  a: null, b: null, top: 9,  unit: '/10' },
-  { label: 'Mobile UX',         client: 38, a: null, b: null, top: 90, unit: '' },
+  { label: 'Performance (heurística)', client: 80, a: 60, b: 80,  top: 95, unit: '' },
+  { label: 'SEO on-page',              client: 79, a: 92, b: 95,  top: 95, unit: '' },
+  { label: 'Accesibilidad',            client: 96, a: 98, b: 100, top: 95, unit: '' },
+  { label: 'Señales de conversión',    client: 84, a: 91, b: 92,  top: 95, unit: '' },
+  { label: 'TTFB medido',              client: 1443, a: 2578, b: 1002, top: 800, unit: 'ms' },
 ]
 
+// domain = URL real y verificada por fetch en vivo (2/3 responden 200 OK).
+// score = mismo Score Global automatizado de compareRows (overall), no un
+// índice editorial inventado. admire/adapt/avoid quedan explícitamente
+// marcados como observación cualitativa del equipo, no como dato medido.
 export const references = [
   {
     domain: 'aigendigitalmarketing.net',
+    url: 'https://aigendigitalmarketing.net',
     orbit: 'Orbita Cercana',
-    admire: 'Metodologia inbound documentada y leads medibles por canal',
-    adapt: 'Calculadoras de ROI y lead magnets de contenido especializado',
-    avoid: 'Diseno visual generico sin identidad de marca diferenciada',
-    gravity: 62,
+    status: 'medido' as const,
+    score: 85,
+    admire: 'Metodologia inbound documentada y contenido extenso (2964 palabras en home)',
+    adapt: 'Volumen y profundidad de contenido especializado por servicio',
+    avoid: 'TTFB de 2.6s — el mas lento de los 3 dominios medidos',
   },
   {
     domain: 'bolivia.agencia.blue',
+    url: 'https://bolivia.agencia.blue',
     orbit: 'Orbita de Colision',
-    admire: 'Velocidad < 2s y presencia en +20 paises con produccion audiovisual premium',
-    adapt: 'Portfolio con resultados cuantificados y clientes reconocibles',
-    avoid: 'Propuesta de valor poco diferenciada para PyMEs locales bolivianas',
-    gravity: 78,
+    status: 'medido' as const,
+    score: 92,
+    admire: 'TTFB de 1.0s, 84 imagenes todas con alt text, cero hallazgos P0/P1 en el escaneo',
+    adapt: 'Disciplina tecnica: sitemap, robots.txt, schema y accesibilidad de imagenes al 100%',
+    avoid: 'Titulo de pagina de 114 caracteres — Google lo trunca en el SERP',
   },
   {
     domain: 'creactivation.com',
-    orbit: 'Estrella Guia',
-    admire: 'Identidad visual coherente y branding diferenciado en Santa Cruz',
-    adapt: 'Presencia activa en redes con contenido de valor para audiencia local',
-    avoid: 'Blog sin estrategia SEO activa — oportunidad directa para Baral',
-    gravity: 88,
+    url: 'https://creactivation.com',
+    orbit: 'Sin datos',
+    status: 'no_disponible' as const,
+    score: null,
+    admire: 'No se pudo evaluar — el dominio no respondio durante el escaneo automatizado',
+    adapt: 'No se pudo evaluar — el dominio no respondio durante el escaneo automatizado',
+    avoid: 'Sitio no accesible al momento del analisis (timeout de conexion, 17/08/2026)',
   },
 ]
 

@@ -52,15 +52,24 @@ export function FooterSection({
                 <TiltCard className="h-full p-5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="truncate font-mono text-sm font-medium text-foreground">{ref.domain}</p>
+                      <a
+                        href={ref.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="truncate block font-mono text-sm font-medium text-foreground underline decoration-dotted underline-offset-2 hover:text-gradient-quasar"
+                      >
+                        {ref.domain} ↗
+                      </a>
                       <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                         {ref.orbit}
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="font-mono text-xl font-semibold tabular-nums text-gradient-quasar">{ref.gravity}</p>
+                      <p className="font-mono text-xl font-semibold tabular-nums text-gradient-quasar">
+                        {ref.score !== null ? ref.score : '—'}
+                      </p>
                       <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                        gravedad
+                        {ref.score !== null ? 'score' : 'sin datos'}
                       </p>
                     </div>
                   </div>
