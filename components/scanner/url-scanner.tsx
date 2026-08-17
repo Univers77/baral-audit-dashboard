@@ -287,13 +287,14 @@ export function UrlScanner({ onResult }: { onResult?: (r: AuditResult) => void }
                     <span className="font-mono text-[10px] truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>{result.url}</span>
                   </div>
                 </div>
-                {/* Screenshot */}
-                <div className="relative w-full overflow-hidden" style={{ height: '220px', background: '#0a0b14' }}>
+                {/* Screenshot — aspect-ratio coincide con el viewport pedido a Microlink (16:10)
+                    para mostrar el hero real del sitio sin recortarlo a una franja irreconocible */}
+                <div className="relative w-full overflow-hidden" style={{ aspectRatio: '16 / 10', background: '#0a0b14' }}>
                   <img
                     src={result.raw.screenshotUrl}
                     alt={`Vista previa de ${result.domain}`}
                     className="w-full h-full object-cover object-top"
-                    style={{ opacity: 0.92 }}
+                    style={{ opacity: 0.96 }}
                     onError={(e) => {
                       const el = e.target as HTMLImageElement
                       el.style.display = 'none'
