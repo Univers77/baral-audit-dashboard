@@ -17,6 +17,8 @@ import { RoadmapSection } from '@/components/audit/roadmap-section'
 import { FooterSection } from '@/components/audit/footer-section'
 import { ExportSection } from '@/components/audit/export-section'
 import { ExecutiveReport } from '@/components/audit/executive-report'
+import { MethodologySection } from '@/components/audit/methodology-section'
+import { PackagesSection } from '@/components/audit/packages-section'
 import { UrlScanner } from '@/components/scanner/url-scanner'
 import type { Priority } from '@/lib/audit-data'
 import type { AuditResult } from '@/lib/scanner/types'
@@ -84,6 +86,8 @@ export default function Page() {
             ga4Data={ga4Data}
           />
           <RoadmapSection scanResult={scanResult} onFocusFinding={focusFinding} />
+          <MethodologySection />
+          <PackagesSection scanResult={scanResult} />
           <ExportSection scanResult={scanResult} ga4Data={ga4Data} />
           <FooterSection scanResult={scanResult} ga4Data={ga4Data} />
         </main>

@@ -94,28 +94,37 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
   // Images
   const imgs = $('img')
   const totalImages = imgs.length
-  let imagesWithoutAlt = 0
+  let imagesNoAltAttr = 0
   let imagesWithEmptyAlt = 0
   imgs.each((_, el) => {
     const alt = $(el).attr('alt')
-    if (alt === undefined) imagesWithoutAlt++
+    if (alt === undefined) imagesNoAltAttr++
     else if (alt.trim() === '') imagesWithEmptyAlt++
   })
+  // Para SEO/accesibilidad una imagen de contenido con alt="" es tan invisible
+  // como una sin el atributo: el lector de pantalla la omite y Google no la
+  // indexa. Se cuentan juntas — antes solo se miraba el atributo ausente y el
+  // informe declaraba "0 sin alt / OK" en sitios con decenas de alt vacíos.
+  const imagesWithoutAlt = imagesNoAltAttr + imagesWithEmptyAlt
 
-  // Word count (visible text)
-  $('script, style, noscript, svg').remove()
-  const bodyText = $('body').text().replace(/\s+/g, ' ').trim()
-  const wordCount = bodyText.split(' ').filter(w => w.length > 2).length
-
-  // Schema
+  // ── Schema JSON-LD ──
+  // OJO: debe leerse ANTES de remover <script> para el word count. Cuando el
+  // remove() iba primero, estos bloques ya no existían y hasSchema daba false
+  // en todos los sitios.
   const schemaScripts = $('script[type="application/ld+json"]')
   const hasSchema = schemaScripts.length > 0
   const schemaTypes: string[] = []
   schemaScripts.each((_, el) => {
     try {
-      const obj = JSON.parse($(el).html() ?? '{}')
-      const t = obj['@type'] ?? obj.type
-      if (t) schemaTypes.push(String(t))
+      const parsed = JSON.parse($(el).text() || '{}')
+      // Yoast/AIOSEO anidan todo bajo @graph; sin desenrollarlo se pierden
+      // los tipos y Organization/LocalBusiness quedan sin detectar.
+      const nodes = Array.isArray(parsed) ? parsed : (parsed['@graph'] ?? [parsed])
+      for (const n of nodes) {
+        const t = n?.['@type'] ?? n?.type
+        if (!t) continue
+        for (const one of Array.isArray(t) ? t : [t]) schemaTypes.push(String(one))
+      }
     } catch {}
   })
 
@@ -123,21 +132,48 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
   const hasOpenGraph = $('meta[property^="og:"]').length > 0
   const hasTwitterCard = $('meta[name^="twitter:"]').length > 0
 
-  // Links
+  // ── Señales de usabilidad/calidad de código ──
+  const hreflangCount = $('link[rel="alternate"][hreflang]').length
+  const langAttr = $('html').attr('lang')?.trim() || null
+  const hasFavicon = $('link[rel*="icon"]').length > 0
+  const iframeCount = $('iframe').length
+  const inlineStyleCount = $('[style]').length
+
+  // Emails en texto plano — cosechables por bots de spam
+  const emailsInPlainText = [
+    ...new Set((htmlRaw.match(/[\w.+-]+@[\w-]+\.[\w.]{2,}/g) ?? [])),
+  ].filter(e => !/\.(png|jpe?g|gif|svg|webp|css|js)$/i.test(e) && !e.includes('@2x')).slice(0, 5)
+
+  // Links (rel=nofollow separado: no transmite autoridad)
   const allLinks = $('a[href]')
-  let internalLinks = 0, externalLinks = 0
+  let internalLinks = 0, externalLinks = 0, externalNofollow = 0
   allLinks.each((_, el) => {
     const href = $(el).attr('href') ?? ''
-    if (href.startsWith('http') && !href.includes(dom)) externalLinks++
-    else if (href.startsWith('/') || href.includes(dom)) internalLinks++
+    const rel = ($(el).attr('rel') ?? '').toLowerCase()
+    const isExternal = /^https?:\/\//i.test(href) && !href.includes(dom)
+    if (isExternal) {
+      externalLinks++
+      if (rel.includes('nofollow')) externalNofollow++
+    } else if (href.startsWith('/') || href.includes(dom)) {
+      internalLinks++
+    }
   })
 
-  // External checks (robots.txt + sitemap)
+  // ── Word count ──
+  // Se hace al final: remove() destruye nodos y todo lo que dependa de
+  // <script>/<svg> debe haberse leído ya.
+  $('script, style, noscript, svg').remove()
+  const bodyText = $('body').text().replace(/\s+/g, ' ').trim()
+  const wordCount = bodyText.split(' ').filter(w => w.length > 2).length
+
+  // External checks (robots.txt + sitemap + llms.txt para crawlers de IA)
   const baseUrl = new URL(url).origin
-  const [robotsTxtExists, sitemapExists] = await Promise.all([
+  const [robotsTxtExists, sitemapExists, llmsTxtExists] = await Promise.all([
     fetch(`${baseUrl}/robots.txt`, { signal: AbortSignal.timeout(5_000) })
       .then(r => r.ok).catch(() => false),
     fetch(`${baseUrl}/sitemap.xml`, { signal: AbortSignal.timeout(5_000) })
+      .then(r => r.ok).catch(() => false),
+    fetch(`${baseUrl}/llms.txt`, { signal: AbortSignal.timeout(5_000) })
       .then(r => r.ok).catch(() => false),
   ])
 
@@ -165,7 +201,16 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
     totalImages,
     imagesWithoutAlt,
     imagesWithEmptyAlt,
+    imagesNoAltAttr,
     wordCount,
+    hreflangCount,
+    langAttr,
+    hasFavicon,
+    iframeCount,
+    inlineStyleCount,
+    emailsInPlainText,
+    externalNofollow,
+    llmsTxtExists,
     hasSchema,
     schemaTypes,
     hasOpenGraph,

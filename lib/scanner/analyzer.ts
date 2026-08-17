@@ -155,23 +155,26 @@ export function analyze(raw: RawScan): AuditResult {
     })
   }
 
-  // Images without alt
+  // Images without usable alt (sin atributo + alt="")
   if (raw.imagesWithoutAlt > 5 || (raw.totalImages > 0 && raw.imagesWithoutAlt / raw.totalImages > 0.3)) {
     const pct = raw.totalImages > 0 ? Math.round((raw.imagesWithoutAlt / raw.totalImages) * 100) : 0
+    const breakdown: string[] = []
+    if (raw.imagesNoAltAttr > 0) breakdown.push(`${raw.imagesNoAltAttr} sin el atributo`)
+    if (raw.imagesWithEmptyAlt > 0) breakdown.push(`${raw.imagesWithEmptyAlt} con alt=""`)
     findings.push({
       id: nextId(`${dom}-A11Y`), module: 'M08', category: 'Accesibilidad / SEO', priority: 'P1',
-      stage: 'discover', title: `${raw.imagesWithoutAlt} de ${raw.totalImages} imágenes sin alt text (${pct}%)`,
-      what: `El ${pct}% de las imágenes del sitio carecen de texto alternativo. Afecta SEO de imágenes y accesibilidad.`,
-      impactBusiness: 'Pérdida de tráfico desde Google Images. Riesgo de incumplimiento de accesibilidad.',
-      impactUser: 'Usuarios con lectores de pantalla reciben solo el nombre del archivo o nada.',
-      impactTech: 'Auditar Biblioteca de Medios y añadir alt descriptivo a cada imagen relevante.',
+      stage: 'discover', title: `${raw.imagesWithoutAlt} de ${raw.totalImages} imágenes sin texto alternativo útil (${pct}%)`,
+      what: `El ${pct}% de las imágenes no aporta texto alternativo aprovechable (${breakdown.join(' · ')}). Un alt="" es legítimo solo en imágenes decorativas: si se aplica a imágenes de contenido, el lector de pantalla las omite y Google no las indexa.`,
+      impactBusiness: 'Pérdida de tráfico desde Google Images y riesgo de incumplimiento de accesibilidad (WCAG 2.2 · criterio 1.1.1 Contenido no textual, nivel A).',
+      impactUser: 'Quien usa lector de pantalla no recibe ninguna descripción de la imagen: el contenido visual simplemente no existe para esa persona.',
+      impactTech: 'Auditar la biblioteca de medios y añadir alt descriptivo a cada imagen de contenido; reservar alt="" solo para decorativas.',
       evidence: [
-        { source: 'Análisis HTML', value: `${raw.imagesWithoutAlt}/${raw.totalImages} imágenes sin atributo alt` },
-        { source: 'Porcentaje', value: `${pct}% del inventario de imágenes sin alt` },
+        { source: 'Análisis HTML', value: `${raw.imagesWithoutAlt}/${raw.totalImages} imágenes sin alt útil (${breakdown.join(', ')})` },
+        { source: 'WCAG 2.2 · 1.1.1', value: 'Contenido no textual — nivel A (mínimo exigible)' },
       ],
       confidence: 95, severity: 3, scope: 2.0, businessImpact: 1.0,
       auditxStatus: 'CONFIRMED', effort: 'Medio',
-      direction: 'Añadir alt descriptivo a imágenes de contenido. Usar alt="" para imágenes decorativas.',
+      direction: 'Añadir alt descriptivo a imágenes de contenido. Mantener alt="" únicamente en decorativas puras (fondos, separadores).',
       validate: 'WAVE o axe DevTools — cero errores de imagen sin alt en páginas principales.',
       impact3mo: 'SEO de imágenes estancado. Riesgo legal de accesibilidad.',
       impact6mo: 'Pérdida sostenida de tráfico visual y posible exposición regulatoria.',
@@ -253,11 +256,72 @@ export function analyze(raw: RawScan): AuditResult {
     })
   }
 
-  // No schema
+  // Schema
   if (!raw.hasSchema) {
     compact.push({
       id: nextId(`${dom}-SEO`), module: 'M10',
-      title: 'Sin Schema JSON-LD — sin rich results ni LocalBusiness para búsquedas locales', effort: 'Medio', priority: 'P2',
+      title: 'Sin Schema JSON-LD — sin rich results ni entidad declarada para buscadores y LLMs', effort: 'Medio', priority: 'P2',
+    })
+  } else {
+    const types = raw.schemaTypes.map(t => t.toLowerCase())
+    const hasIdentity = types.some(t => t.includes('organization') || t.includes('person') || t.includes('localbusiness'))
+    const hasLocal = types.some(t => t.includes('localbusiness'))
+    if (!hasIdentity) {
+      compact.push({
+        id: nextId(`${dom}-SEO`), module: 'M10',
+        title: `Schema presente (${raw.schemaTypes.join(', ')}) pero sin Organization/Person — la entidad no queda declarada para buscadores ni LLMs`,
+        effort: 'Bajo', priority: 'P2',
+      })
+    } else if (!hasLocal) {
+      compact.push({
+        id: nextId(`${dom}-SEO`), module: 'M10',
+        title: 'Sin LocalBusiness Schema — no se capturan búsquedas locales con intención de contratar', effort: 'Bajo', priority: 'P2',
+      })
+    }
+  }
+
+  // Email en texto plano — cosechable por bots de spam
+  if (raw.emailsInPlainText.length > 0) {
+    compact.push({
+      id: nextId(`${dom}-USABILITY`), module: 'M15',
+      title: `Email expuesto en texto plano (${raw.emailsInPlainText[0]}) — cosechable por bots de spam`,
+      effort: 'Bajo', priority: 'P2',
+    })
+  }
+
+  // Inline styles — degradan cacheo y mantenibilidad
+  if (raw.inlineStyleCount > 5) {
+    compact.push({
+      id: nextId(`${dom}-PERF`), module: 'M07',
+      title: `${raw.inlineStyleCount} elementos con estilos inline — no se cachean y engordan cada carga de HTML`,
+      effort: 'Medio', priority: 'P3',
+    })
+  }
+
+  // Idioma declarado — afecta lectores de pantalla y segmentación de buscadores
+  if (!raw.langAttr) {
+    compact.push({
+      id: nextId(`${dom}-A11Y`), module: 'M08',
+      title: 'Sin atributo lang en <html> — lectores de pantalla no saben en qué idioma leer (WCAG 3.1.1)',
+      effort: 'Bajo', priority: 'P2',
+    })
+  }
+
+  // Favicon — señal de legitimidad de marca
+  if (!raw.hasFavicon) {
+    compact.push({
+      id: nextId(`${dom}-TRUST`), module: 'M11',
+      title: 'Sin favicon — la pestaña del navegador y los marcadores quedan sin identidad de marca',
+      effort: 'Bajo', priority: 'P3',
+    })
+  }
+
+  // llms.txt — visibilidad ante buscadores generativos
+  if (!raw.llmsTxtExists) {
+    compact.push({
+      id: nextId(`${dom}-GEO`), module: 'M19',
+      title: 'Sin llms.txt — no hay guía para crawlers de IA (ChatGPT, Perplexity, Claude) sobre qué contenido priorizar',
+      effort: 'Bajo', priority: 'P3',
     })
   }
 

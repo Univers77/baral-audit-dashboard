@@ -187,13 +187,14 @@ export function UrlScanner({ onResult }: { onResult?: (r: AuditResult) => void }
             style={{ border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}
           >
             <Globe size={11} />
-            ESCÁNER DE SITIOS WEB
+            RADIOGRAFÍA DIGITAL · BARAL
           </div>
-          <h2 className="font-display mb-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-            Analiza cualquier URL
+          <h2 className="font-display mb-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl text-balance">
+            ¿Tu web está trabajando para vos?
           </h2>
-          <p className="text-[14px]" style={{ color: 'var(--muted-foreground)' }}>
-            Pega una URL y obtén un diagnóstico SEO + performance en segundos
+          <p className="mx-auto max-w-lg text-[14px] leading-relaxed text-pretty" style={{ color: 'var(--muted-foreground)' }}>
+            Es lo primero que hacemos con cada cliente: una radiografía completa antes de tocar nada.
+            Poné tu dirección y vemos juntos qué encontramos.
           </p>
         </div>
 
@@ -209,7 +210,7 @@ export function UrlScanner({ onResult }: { onResult?: (r: AuditResult) => void }
               type="url"
               value={inputUrl}
               onChange={e => setInputUrl(e.target.value)}
-              placeholder="https://ejemplo.com"
+              placeholder="tuempresa.com"
               disabled={scanning}
               className="w-full rounded-xl py-3 pr-4 pl-10 font-mono text-[14px] text-white placeholder:text-gray-600 focus:outline-none disabled:opacity-50"
               style={{
@@ -228,7 +229,7 @@ export function UrlScanner({ onResult }: { onResult?: (r: AuditResult) => void }
             }}
           >
             {scanning ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
-            {scanning ? 'Analizando…' : 'Analizar'}
+            {scanning ? 'Radiografiando…' : 'Radiografiar'}
           </button>
         </form>
 

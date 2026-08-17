@@ -24,8 +24,10 @@ export interface RawScan {
   robotsMetaContent: string
   // Images
   totalImages: number
+  /** sin atributo alt + con alt="" — ambos son invisibles para SEO y lectores de pantalla */
   imagesWithoutAlt: number
   imagesWithEmptyAlt: number
+  imagesNoAltAttr: number
   // Content
   wordCount: number
   hasSchema: boolean
@@ -35,10 +37,22 @@ export interface RawScan {
   // Links
   internalLinks: number
   externalLinks: number
+  /** externos con rel=nofollow — no transmiten autoridad */
+  externalNofollow: number
   brokenLinks: string[]
+  // Usabilidad / calidad de código
+  hreflangCount: number
+  langAttr: string | null
+  hasFavicon: boolean
+  iframeCount: number
+  inlineStyleCount: number
+  /** emails visibles en el HTML — cosechables por bots de spam */
+  emailsInPlainText: string[]
   // External checks
   robotsTxtExists: boolean
   sitemapExists: boolean
+  /** estándar propuesto para guiar crawlers de LLMs */
+  llmsTxtExists: boolean
   // Raw HTML (truncated for analysis)
   htmlSnippet: string
   // Screenshot URL — alias de screenshots.desktop (compatibilidad)

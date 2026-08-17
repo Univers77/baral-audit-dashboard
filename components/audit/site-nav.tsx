@@ -10,6 +10,7 @@ const SECTIONS = [
   { id: 'metricas', label: 'Métricas' },
   { id: 'competencia', label: 'Competencia' },
   { id: 'roadmap', label: 'Roadmap' },
+  { id: 'paquetes', label: 'Paquetes' },
 ]
 
 export function SiteNav() {
@@ -53,7 +54,7 @@ export function SiteNav() {
   }
 
   return (
-    <header className="fixed top-0 right-0 left-0 z-50">
+    <header className="fixed top-0 right-0 left-0 z-[9999]">
       <nav
         aria-label="Navegación de la auditoría"
         className={cn(

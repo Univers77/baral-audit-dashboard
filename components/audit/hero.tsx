@@ -48,16 +48,17 @@ export function Hero({ scanResult, ga4Data }: { scanResult: AuditResult | null; 
             style={{ border: '1px solid var(--border)' }}
           >
             <span className="size-1.5 rounded-full" style={{ background: 'var(--muted-foreground)' }} />
-            DIAGNÓSTICO PENDIENTE
+            RADIOGRAFÍA EN ESPERA
           </div>
           <h1 className="font-display max-w-3xl text-[clamp(2rem,5.5vw,4rem)] leading-[0.98] font-semibold tracking-[-0.02em] text-balance">
-            Escanea una URL para ver
+            Tu web ya le está diciendo algo
             <br />
-            <span className="text-gradient-quasar">el diagnóstico completo</span>
+            <span className="text-gradient-quasar">a cada visitante</span>
             <span className="animate-caret text-primary">_</span>
           </h1>
-          <p className="text-muted-foreground max-w-lg text-[16px] leading-relaxed text-pretty">
-            El análisis detecta rendimiento, SEO, accesibilidad, conversión, tech stack y hallazgos — todo desde la URL, en segundos.
+          <p className="text-muted-foreground max-w-xl text-[16px] leading-relaxed text-pretty">
+            La pregunta es si dice lo que vos querés. Poné la dirección arriba y en segundos vas a ver lo que
+            ve Google, lo que siente tu cliente y lo que te está costando plata ahora mismo.
           </p>
         </div>
       </section>
