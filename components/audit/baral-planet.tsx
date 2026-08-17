@@ -3,17 +3,9 @@
 import { useEffect, useRef } from 'react'
 
 type Asteroid = {
-  angle: number
-  speed: number
-  orbitRX: number
-  orbitRY: number
-  tiltSin: number
-  tiltCos: number
-  size: number
-  r: number
-  g: number
-  b: number
-  trail: { x: number; y: number }[]
+  angle: number; speed: number; orbitRX: number; orbitRY: number
+  tiltSin: number; tiltCos: number; size: number
+  r: number; g: number; b: number; trail: { x: number; y: number }[]
 }
 
 export function BaralPlanet({ size = 260 }: { size?: number }) {
@@ -35,214 +27,240 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
 
     const CX = S / 2
     const CY = S / 2
-    const R = S * 0.33
+    const R = S * 0.34
 
-    // Pre-load the Baral B icon as image (draws just the icon square)
+    // Logo dimensions on sphere — full 200×60 ratio
+    const LOGO_W = R * 1.62
+    const LOGO_H = LOGO_W * (60 / 200)
+
+    // Pre-load logo (full SVG, not cropped)
     const logoImg = new Image()
     logoImg.src = '/baral-logo.svg'
 
     const astColors: [number, number, number][] = [
-      [196, 181, 253],
-      [167, 139, 250],
-      [221, 214, 254],
-      [233, 213, 255],
-      [139, 92, 246],
+      [196, 181, 253], [167, 139, 250], [221, 214, 254],
+      [139, 92, 246], [109, 40, 217], [232, 220, 255],
     ]
 
-    const asteroids: Asteroid[] = Array.from({ length: 8 }, (_, i) => {
-      const tilt = (Math.random() - 0.5) * 0.9
+    const asteroids: Asteroid[] = Array.from({ length: 7 }, (_, i) => {
+      const tilt = (Math.random() - 0.5) * 0.78
       const col = astColors[i % astColors.length]
       return {
-        angle: (i / 8) * Math.PI * 2 + Math.random(),
-        speed: 0.0025 + Math.random() * 0.005,
-        orbitRX: R * (1.45 + Math.random() * 0.55),
-        orbitRY: R * (0.28 + Math.random() * 0.22),
-        tiltSin: Math.sin(tilt),
-        tiltCos: Math.cos(tilt),
-        size: 1.4 + Math.random() * 2.2,
+        angle: (i / 7) * Math.PI * 2 + Math.random() * 0.5,
+        speed: 0.0022 + Math.random() * 0.0038,
+        orbitRX: R * (1.55 + Math.random() * 0.48),
+        orbitRY: R * (0.24 + Math.random() * 0.17),
+        tiltSin: Math.sin(tilt), tiltCos: Math.cos(tilt),
+        size: 1.2 + Math.random() * 2.0,
         r: col[0], g: col[1], b: col[2],
         trail: [],
       }
     })
 
     let rotation = 0
-    let logoAngle = 0   // angle controlling B logo face (0 = front)
+    let logoAngle = 0
     let raf: number
 
-    // Draw planet ring (elliptical orbit belt)
     function drawRing(behind: boolean) {
       ctx.save()
       ctx.translate(CX, CY)
-      const ringRX = R * 1.72
-      const ringRY = R * 0.22
-      const ringGrad = ctx.createLinearGradient(-ringRX, 0, ringRX, 0)
-      ringGrad.addColorStop(0, 'rgba(139,92,246,0)')
-      ringGrad.addColorStop(0.25, 'rgba(139,92,246,0.18)')
-      ringGrad.addColorStop(0.5, 'rgba(196,181,253,0.55)')
-      ringGrad.addColorStop(0.75, 'rgba(139,92,246,0.18)')
-      ringGrad.addColorStop(1, 'rgba(139,92,246,0)')
+      const outerRX = R * 1.88
+      const outerRY = R * 0.235
+      const midRX   = R * 1.58
+      const midRY   = R * 0.197
+      const innerRX = R * 1.34
+      const innerRY = R * 0.165
 
-      // Behind: top half arc — in front of: bottom half arc
       const startAngle = behind ? Math.PI : 0
-      const endAngle = behind ? Math.PI * 2 : Math.PI
+      const endAngle   = behind ? Math.PI * 2 : Math.PI
+
+      // Outer ring
+      const grad = ctx.createLinearGradient(-outerRX, 0, outerRX, 0)
+      grad.addColorStop(0,    'rgba(91,45,186,0)')
+      grad.addColorStop(0.12, 'rgba(139,92,246,0.28)')
+      grad.addColorStop(0.32, 'rgba(196,181,253,0.65)')
+      grad.addColorStop(0.5,  'rgba(230,215,255,0.78)')
+      grad.addColorStop(0.68, 'rgba(196,181,253,0.65)')
+      grad.addColorStop(0.88, 'rgba(139,92,246,0.28)')
+      grad.addColorStop(1,    'rgba(91,45,186,0)')
 
       ctx.beginPath()
-      ctx.ellipse(0, 0, ringRX, ringRY, 0, startAngle, endAngle)
-      ctx.strokeStyle = ringGrad
-      ctx.lineWidth = behind ? 2.5 : 4.5
-      ctx.globalAlpha = behind ? 0.38 : 0.72
+      ctx.ellipse(0, 0, outerRX, outerRY, 0, startAngle, endAngle)
+      ctx.strokeStyle = grad
+      ctx.lineWidth = behind ? 3.5 : 5.5
+      ctx.globalAlpha = behind ? 0.42 : 0.85
+      ctx.stroke()
+
+      // Mid ring (Cassini gap effect)
+      ctx.beginPath()
+      ctx.ellipse(0, 0, midRX, midRY, 0, startAngle, endAngle)
+      ctx.strokeStyle = 'rgba(167,139,250,0.08)'
+      ctx.lineWidth = behind ? 4 : 7
+      ctx.globalAlpha = 1
       ctx.stroke()
 
       // Inner thin ring
       ctx.beginPath()
-      ctx.ellipse(0, 0, ringRX * 0.83, ringRY * 0.83, 0, startAngle, endAngle)
-      ctx.strokeStyle = 'rgba(196,181,253,0.18)'
+      ctx.ellipse(0, 0, innerRX, innerRY, 0, startAngle, endAngle)
+      ctx.strokeStyle = 'rgba(196,181,253,0.22)'
       ctx.lineWidth = 1.2
-      ctx.globalAlpha = behind ? 0.2 : 0.45
+      ctx.globalAlpha = behind ? 0.22 : 0.48
       ctx.stroke()
 
       ctx.restore()
     }
 
-    const drawFrame = () => {
+    const draw = () => {
       ctx.clearRect(0, 0, S, S)
-      rotation += 0.0022
-      logoAngle += 0.006  // B logo orbits at its own speed
+      rotation += 0.0016
+      logoAngle += 0.0042
 
-      /* ── outer atmosphere glow ── */
-      const glow = ctx.createRadialGradient(CX, CY, R * 0.7, CX, CY, R * 1.9)
-      glow.addColorStop(0, `rgba(139,92,246,0.22)`)
-      glow.addColorStop(0.55, `rgba(109,40,217,0.08)`)
-      glow.addColorStop(1, `transparent`)
-      ctx.fillStyle = glow
+      // ── Outer atmosphere glow ──
+      const atm = ctx.createRadialGradient(CX, CY, R * 0.8, CX, CY, R * 2.1)
+      atm.addColorStop(0,   'rgba(109,40,217,0.20)')
+      atm.addColorStop(0.4, 'rgba(91,45,186,0.08)')
+      atm.addColorStop(1,   'transparent')
+      ctx.fillStyle = atm
       ctx.beginPath()
-      ctx.arc(CX, CY, R * 1.9, 0, Math.PI * 2)
+      ctx.arc(CX, CY, R * 2.1, 0, Math.PI * 2)
       ctx.fill()
 
-      /* ── ring behind planet ── */
+      // ── Ring behind planet ──
       drawRing(true)
 
-      /* ── planet body ── */
-      const grad = ctx.createRadialGradient(CX - R * 0.28, CY - R * 0.3, R * 0.05, CX + R * 0.1, CY + R * 0.1, R)
-      grad.addColorStop(0, `#d4bbff`)
-      grad.addColorStop(0.22, `#a78bfa`)
-      grad.addColorStop(0.55, `#7c3aed`)
-      grad.addColorStop(0.82, `#4c1d95`)
-      grad.addColorStop(1, `#1a004a`)
+      // ── Planet body ──
+      const body = ctx.createRadialGradient(
+        CX - R * 0.32, CY - R * 0.36, R * 0.02,
+        CX + R * 0.06, CY + R * 0.06, R * 1.04
+      )
+      body.addColorStop(0,    '#ede0ff')
+      body.addColorStop(0.06, '#d4bbff')
+      body.addColorStop(0.18, '#b49dff')
+      body.addColorStop(0.38, '#8b5cf6')
+      body.addColorStop(0.58, '#6d28d9')
+      body.addColorStop(0.76, '#4c1d95')
+      body.addColorStop(0.90, '#2e0a6e')
+      body.addColorStop(1,    '#09001e')
+
       ctx.beginPath()
       ctx.arc(CX, CY, R, 0, Math.PI * 2)
-      ctx.fillStyle = grad
+      ctx.fillStyle = body
       ctx.fill()
 
-      /* ── grid lines + B logo clipped to sphere ── */
+      // ── Surface details (clipped) ──
       ctx.save()
       ctx.beginPath()
       ctx.arc(CX, CY, R, 0, Math.PI * 2)
       ctx.clip()
 
-      // Latitude lines
-      ctx.lineWidth = 0.7
-      for (let lat = -70; lat <= 70; lat += 20) {
+      // Latitude rings
+      for (let lat = -65; lat <= 65; lat += 22) {
         const rad = (lat * Math.PI) / 180
-        const y = CY + R * Math.sin(rad)
-        const r = R * Math.cos(rad)
-        if (r < 1) continue
-        const a = 0.08 + 0.12 * Math.pow(Math.cos(rad), 2)
+        const ry = CY + R * Math.sin(rad)
+        const rr = R * Math.cos(rad)
+        if (rr < 1) continue
+        const a = 0.04 + 0.09 * Math.pow(Math.cos(rad), 2)
         ctx.strokeStyle = `rgba(196,181,253,${a.toFixed(2)})`
+        ctx.lineWidth = 0.6
         ctx.beginPath()
-        ctx.ellipse(CX, y, r, r * 0.2, 0, 0, Math.PI * 2)
+        ctx.ellipse(CX, ry, rr, rr * 0.17, 0, 0, Math.PI * 2)
         ctx.stroke()
       }
 
-      // Longitude meridians
+      // Longitude meridians (rotating)
       for (let i = 0; i < 9; i++) {
         const lng = (i / 9) * Math.PI * 2 + rotation
         const cosL = Math.cos(lng)
-        if (cosL < -0.05) continue
-        const alpha = cosL * 0.22
+        if (cosL < 0) continue
+        const alpha = cosL * 0.17
         ctx.strokeStyle = `rgba(167,139,250,${alpha.toFixed(3)})`
-        ctx.lineWidth = 0.8
+        ctx.lineWidth = 0.7
         const bulge = R * Math.sin(lng)
         ctx.beginPath()
-        ctx.moveTo(CX + bulge * 0.05, CY - R)
+        ctx.moveTo(CX + bulge * 0.06, CY - R)
         ctx.bezierCurveTo(
-          CX + bulge * 1.05, CY - R * 0.5,
-          CX + bulge * 1.05, CY + R * 0.5,
-          CX + bulge * 0.05, CY + R,
+          CX + bulge * 1.06, CY - R * 0.5,
+          CX + bulge * 1.06, CY + R * 0.5,
+          CX + bulge * 0.06, CY + R
         )
         ctx.stroke()
       }
 
-      // ── Baral B logo on sphere surface (Superman crystal effect) ──
-      // logoFace goes -1 (backface) to +1 (front center)
+      // ── Full Baral logo rotating on sphere surface ──
       const logoFace = Math.cos(logoAngle)
-      if (logoFace > -0.05 && logoImg.complete && logoImg.naturalWidth > 0) {
-        const logoSize = R * 0.62
+      if (logoFace > -0.08 && logoImg.complete && logoImg.naturalWidth > 0) {
         const faceAlpha = Math.max(0, logoFace)
-        // Horizontal shift as it rotates around the sphere
-        const logoX = CX + Math.sin(logoAngle) * R * 0.35
+        const logoX = CX + Math.sin(logoAngle) * R * 0.28
         const logoY = CY
 
         ctx.save()
         ctx.translate(logoX, logoY)
-        // Perspective squish: compress X axis as logo wraps around sphere
-        ctx.scale(logoFace, 1)
-        ctx.globalAlpha = faceAlpha * 0.88
+        ctx.scale(logoFace, 1)           // perspective X-squish as it wraps sphere
+        ctx.globalAlpha = faceAlpha * 0.94
 
-        // Glow behind the logo
-        const lglow = ctx.createRadialGradient(0, 0, 0, 0, 0, logoSize)
-        lglow.addColorStop(0, `rgba(91,45,186,${faceAlpha * 0.55})`)
+        // Purple glow behind logo
+        const lglow = ctx.createRadialGradient(0, 0, 0, 0, 0, LOGO_W * 0.6)
+        lglow.addColorStop(0, `rgba(91,45,186,${(faceAlpha * 0.65).toFixed(2)})`)
+        lglow.addColorStop(0.5, `rgba(91,45,186,${(faceAlpha * 0.2).toFixed(2)})`)
         lglow.addColorStop(1, 'transparent')
         ctx.fillStyle = lglow
         ctx.beginPath()
-        ctx.arc(0, 0, logoSize, 0, Math.PI * 2)
+        ctx.arc(0, 0, LOGO_W * 0.6, 0, Math.PI * 2)
         ctx.fill()
 
-        // Draw only the icon portion of the SVG (first 60×60 of the 200×60 viewBox)
-        // The icon sits at viewBox 0 0 60 60 within the full 200×60 SVG
-        // Use drawImage with source crop
-        try {
-          ctx.drawImage(
-            logoImg,
-            0, 0, 60, 60,          // src: icon square (first 60px of viewBox width)
-            -logoSize / 2, -logoSize / 2, logoSize, logoSize,
-          )
-        } catch {
-          // image not ready yet
-        }
+        // Draw full logo (icon + BARAL + ESTRATEGIA INTEGRAL CREATIVA)
+        ctx.drawImage(
+          logoImg,
+          0, 0, 200, 60,
+          -LOGO_W / 2, -LOGO_H / 2, LOGO_W, LOGO_H
+        )
+
         ctx.restore()
       }
 
-      // Specular highlight (on top of logo)
-      const highlight = ctx.createRadialGradient(
-        CX - R * 0.32, CY - R * 0.32, 0,
-        CX - R * 0.32, CY - R * 0.32, R * 0.7,
+      // ── Specular highlight ──
+      const spec = ctx.createRadialGradient(
+        CX - R * 0.35, CY - R * 0.36, 0,
+        CX - R * 0.22, CY - R * 0.26, R * 0.68
       )
-      highlight.addColorStop(0, `rgba(255,255,255,0.16)`)
-      highlight.addColorStop(0.6, `rgba(255,255,255,0.03)`)
-      highlight.addColorStop(1, `transparent`)
-      ctx.fillStyle = highlight
+      spec.addColorStop(0, 'rgba(255,255,255,0.24)')
+      spec.addColorStop(0.28, 'rgba(255,255,255,0.07)')
+      spec.addColorStop(1, 'transparent')
+      ctx.fillStyle = spec
       ctx.fillRect(CX - R, CY - R, R * 2, R * 2)
+
+      // Lens flare
+      const lfR = R * 0.065
+      const lfX = CX - R * 0.4
+      const lfY = CY - R * 0.4
+      const lf = ctx.createRadialGradient(lfX, lfY, 0, lfX, lfY, lfR)
+      lf.addColorStop(0, 'rgba(255,255,255,0.6)')
+      lf.addColorStop(0.4, 'rgba(255,255,255,0.15)')
+      lf.addColorStop(1, 'transparent')
+      ctx.fillStyle = lf
+      ctx.beginPath()
+      ctx.arc(lfX, lfY, lfR, 0, Math.PI * 2)
+      ctx.fill()
 
       ctx.restore()
 
-      /* ── atmosphere rim ── */
+      // ── Atmosphere rim ──
       ctx.beginPath()
-      ctx.arc(CX, CY, R + 1.2, 0, Math.PI * 2)
-      ctx.strokeStyle = `rgba(167,139,250,0.42)`
-      ctx.lineWidth = 2.2
+      ctx.arc(CX, CY, R + 1.5, 0, Math.PI * 2)
+      ctx.strokeStyle = 'rgba(196,181,253,0.52)'
+      ctx.lineWidth = 2.5
       ctx.stroke()
 
       ctx.beginPath()
-      ctx.arc(CX, CY, R + 5, 0, Math.PI * 2)
-      ctx.strokeStyle = `rgba(139,92,246,0.10)`
-      ctx.lineWidth = 6
+      ctx.arc(CX, CY, R + 7, 0, Math.PI * 2)
+      ctx.strokeStyle = 'rgba(139,92,246,0.11)'
+      ctx.lineWidth = 9
       ctx.stroke()
 
-      /* ── ring in front of planet ── */
+      // ── Ring in front ──
       drawRing(false)
 
-      /* ── asteroids ── */
+      // ── Asteroids ──
       for (const ast of asteroids) {
         ast.angle += ast.speed
         const ox = Math.cos(ast.angle) * ast.orbitRX
@@ -251,40 +269,39 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
         const y = CY + ox * ast.tiltSin + oy * ast.tiltCos
 
         ast.trail.push({ x, y })
-        if (ast.trail.length > 18) ast.trail.shift()
+        if (ast.trail.length > 16) ast.trail.shift()
 
         if (ast.trail.length > 2) {
           for (let t = 1; t < ast.trail.length; t++) {
-            const ta = (t / ast.trail.length) * 0.55
+            const ta = (t / ast.trail.length) * 0.52
             ctx.beginPath()
             ctx.moveTo(ast.trail[t - 1].x, ast.trail[t - 1].y)
             ctx.lineTo(ast.trail[t].x, ast.trail[t].y)
             ctx.strokeStyle = `rgba(${ast.r},${ast.g},${ast.b},${ta.toFixed(3)})`
-            ctx.lineWidth = ast.size * 0.5 * (t / ast.trail.length)
+            ctx.lineWidth = ast.size * 0.42 * (t / ast.trail.length)
             ctx.lineCap = 'round'
             ctx.stroke()
           }
         }
 
-        const halo = ctx.createRadialGradient(x, y, 0, x, y, ast.size * 3.5)
-        halo.addColorStop(0, `rgba(${ast.r},${ast.g},${ast.b},0.7)`)
-        halo.addColorStop(0.45, `rgba(${ast.r},${ast.g},${ast.b},0.18)`)
-        halo.addColorStop(1, `transparent`)
+        const halo = ctx.createRadialGradient(x, y, 0, x, y, ast.size * 3.2)
+        halo.addColorStop(0, `rgba(${ast.r},${ast.g},${ast.b},0.68)`)
+        halo.addColorStop(1, 'transparent')
         ctx.fillStyle = halo
         ctx.beginPath()
-        ctx.arc(x, y, ast.size * 3.5, 0, Math.PI * 2)
+        ctx.arc(x, y, ast.size * 3.2, 0, Math.PI * 2)
         ctx.fill()
 
-        ctx.fillStyle = `rgba(${ast.r},${ast.g},${ast.b},0.95)`
+        ctx.fillStyle = `rgba(${ast.r},${ast.g},${ast.b},0.96)`
         ctx.beginPath()
         ctx.arc(x, y, ast.size, 0, Math.PI * 2)
         ctx.fill()
       }
 
-      raf = requestAnimationFrame(drawFrame)
+      raf = requestAnimationFrame(draw)
     }
 
-    raf = requestAnimationFrame(drawFrame)
+    raf = requestAnimationFrame(draw)
     return () => cancelAnimationFrame(raf)
   }, [size])
 
