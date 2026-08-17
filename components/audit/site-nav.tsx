@@ -9,6 +9,7 @@ const SECTIONS = [
   { id: 'diagnostico', label: 'Diagnóstico' },
   { id: 'hallazgos', label: 'Hallazgos' },
   { id: 'metricas', label: 'Métricas' },
+  { id: 'pagespeed', label: 'PageSpeed' },
   { id: 'competencia', label: 'Competencia' },
   { id: 'roadmap', label: 'Roadmap' },
   { id: 'paquetes', label: 'Paquetes' },

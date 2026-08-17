@@ -13,6 +13,7 @@ import { FindingsSection } from '@/components/audit/findings-section'
 import { MetricsSection } from '@/components/audit/metrics-section'
 import { CompetitiveSection } from '@/components/audit/competitive-section'
 import { EvidenceSection } from '@/components/audit/evidence-section'
+import { PsiSection } from '@/components/audit/psi-section'
 import { TrajectorySection } from '@/components/audit/trajectory-section'
 import { RoadmapSection } from '@/components/audit/roadmap-section'
 import { FooterSection } from '@/components/audit/footer-section'
@@ -79,6 +80,7 @@ export default function Page() {
           <ConstellationMap scanResult={scanResult} onFilter={setFilter} onFocusFinding={focusFinding} />
           <FindingsSection scanResult={scanResult} filter={filter} setFilter={setFilter} focusId={focusId} />
           <MetricsSection scanResult={scanResult} />
+          <PsiSection scanResult={scanResult} />
           <EvidenceSection scanResult={scanResult} />
           <CompetitiveSection scanResult={scanResult} />
           <TrajectorySection
