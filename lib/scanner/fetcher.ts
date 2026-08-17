@@ -52,12 +52,17 @@ const TECH_PATTERNS: { label: string; re: RegExp; crit?: boolean }[] = [
   { label: 'Elementor',            re: /elementor/i },
   { label: 'Astra',                re: /astra-theme|themes\/astra/i },
   { label: 'Spectra',              re: /spectra|ultimate-addons/i },
-  { label: 'WooCommerce',          re: /woocommerce/i },
+  // Exige el plugin real. Un /woocommerce/ suelto da falso positivo: Elementor
+  // incluye reglas CSS .woocommerce en su hoja de estilos aunque el plugin no
+  // esté instalado.
+  { label: 'WooCommerce',          re: /plugins\/woocommerce\/|woocommerce-js|wc-add-to-cart/i },
   { label: 'Shopify',              re: /cdn\.shopify|shopify\.com/i },
   { label: 'Wix',                  re: /wix\.com|wixstatic/i },
   { label: 'Squarespace',          re: /squarespace/i },
   { label: 'Webflow',              re: /webflow/i },
   { label: 'Next.js',              re: /_next\/static|__NEXT_DATA__/i },
+  // wp-includes/js/dist/vendor/react.min.js lo carga WordPress para Gutenberg:
+  // no es una decisión de arquitectura del sitio y se excluye más abajo.
   { label: 'React',                re: /react(-dom)?[.@]|data-reactroot/i },
   { label: 'Vue.js',               re: /vue(\.min)?\.js|data-v-[0-9a-f]{8}/i },
   { label: 'jQuery',               re: /jquery[.-]/i },
@@ -97,7 +102,13 @@ function detectTech(html: string, headers: Record<string, string>): { label: str
   if (headers['cf-ray']) push('Cloudflare CDN')
   if (/php/i.test(xPowered)) push('PHP', xPowered.replace(/^PHP\/?/i, '').trim())
 
-  for (const { label, re } of TECH_PATTERNS) if (re.test(html)) push(label)
+  for (const { label, re } of TECH_PATTERNS) {
+    if (!re.test(html)) continue
+    // React servido desde wp-includes es el runtime de Gutenberg que trae
+    // WordPress de fábrica; reportarlo como stack del sitio induce a error.
+    if (label === 'React' && /wp-includes\/js\/dist\/vendor\/react/i.test(html)) continue
+    push(label)
+  }
 
   if (out.length === 0) push('Stack no detectado', 'Sin firmas reconocibles en el HTML servido')
   return out
