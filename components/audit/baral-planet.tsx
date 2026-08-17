@@ -19,32 +19,154 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
 
     const DPR = Math.min(window.devicePixelRatio || 1, 2)
     const S = size
-    canvas.width = S * DPR
+    canvas.width  = S * DPR
     canvas.height = S * DPR
-    canvas.style.width = `${S}px`
+    canvas.style.width  = `${S}px`
     canvas.style.height = `${S}px`
     ctx.scale(DPR, DPR)
 
     const CX = S / 2
     const CY = S / 2
-    const R = S * 0.34
+    const R  = S * 0.34
 
-    // Logo dimensions on sphere — full 200×60 ratio
+    // Logo dimensions — full 200×60 SVG viewBox ratio
     const LOGO_W = R * 1.62
     const LOGO_H = LOGO_W * (60 / 200)
 
-    // Pre-load logo (full SVG, not cropped)
-    const logoImg = new Image()
-    logoImg.src = '/baral-logo.svg'
+    // B icon path (exact from SVG, SVG coords)
+    const B_PATH_D =
+      'M16 14h14c5.5 0 9 2.8 9 7.2 0 2.8-1.6 5-4 6.2 3.2 1.2 5 3.8 5 7 ' +
+      '0 5-3.8 8.6-10 8.6H16V14z' +
+      'M23 24.8h5.8c2.2 0 3.4-1.2 3.4-3s-1.2-2.8-3.4-2.8H23v5.8z' +
+      'M23 37.2h6.6c2.6 0 4-1.4 4-3.6s-1.4-3.4-4-3.4H23v7z'
+    const bPath = new Path2D(B_PATH_D)
 
+    // ── Draw the full Baral logo natively on canvas ──────────────────────
+    // Avoids SVG-text-in-canvas rendering failure (browsers skip <text> in drawImage)
+    function drawLogo(
+      perspScale: number,   // Math.cos(logoAngle) — perspective X squeeze
+      alpha: number,        // opacity
+      cx: number,           // center X on canvas
+      cy: number,           // center Y on canvas
+    ) {
+      if (Math.abs(perspScale) < 0.01) return
+
+      const scale = LOGO_W / 200   // SVG→canvas scale
+
+      ctx.save()
+      ctx.translate(cx, cy)
+      ctx.scale(perspScale, 1)
+      ctx.globalAlpha = alpha
+
+      // Purple halo behind logo
+      const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, LOGO_W * 0.6)
+      halo.addColorStop(0,   `rgba(91,45,186,${(alpha * 0.55).toFixed(2)})`)
+      halo.addColorStop(0.4, `rgba(109,40,217,${(alpha * 0.18).toFixed(2)})`)
+      halo.addColorStop(1,   'transparent')
+      ctx.fillStyle = halo
+      ctx.beginPath()
+      ctx.arc(0, 0, LOGO_W * 0.6, 0, Math.PI * 2)
+      ctx.fill()
+
+      // Enter SVG coordinate space (SVG center = 100, 30)
+      ctx.translate(-100 * scale, -30 * scale)
+      ctx.scale(scale, scale)
+
+      // ── Icon: purple rounded rect ──
+      ctx.beginPath()
+      if (ctx.roundRect) {
+        ctx.roundRect(4, 4, 52, 52, 10)
+      } else {
+        // Polyfill for older contexts
+        const [x, y, w, h, r] = [4, 4, 52, 52, 10]
+        ctx.moveTo(x + r, y)
+        ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r)
+        ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r)
+        ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r)
+        ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r)
+        ctx.closePath()
+      }
+      ctx.fillStyle = '#5B2DBA'
+      ctx.shadowColor = 'rgba(139,92,246,0.7)'
+      ctx.shadowBlur = 8
+      ctx.fill()
+      ctx.shadowBlur = 0
+
+      // ── B letter (path from SVG) ──
+      ctx.fillStyle = 'white'
+      ctx.fill(bPath)
+
+      // ── Wordmark: BARAL ──
+      ctx.font = 'bold 17px system-ui,-apple-system,Arial,sans-serif'
+      ctx.fillStyle = 'white'
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'alphabetic'
+      try { (ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = '1.2px' } catch {}
+      ctx.fillText('BARAL', 66, 29)
+
+      // ── Tagline: ESTRATEGIA INTEGRAL CREATIVA ──
+      ctx.font = '400 8.5px system-ui,-apple-system,Arial,sans-serif'
+      ctx.fillStyle = '#c4b5fd'
+      try { (ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = '1.8px' } catch {}
+      ctx.fillText('ESTRATEGIA INTEGRAL CREATIVA', 66, 46)
+
+      ctx.restore()
+    }
+
+    // ── Ring ────────────────────────────────────────────────────────────
+    function drawRing(behind: boolean) {
+      ctx.save()
+      ctx.translate(CX, CY)
+      const outerRX = R * 1.88; const outerRY = R * 0.235
+      const midRX   = R * 1.58; const midRY   = R * 0.197
+      const innerRX = R * 1.34; const innerRY = R * 0.165
+
+      const startAngle = behind ? Math.PI : 0
+      const endAngle   = behind ? Math.PI * 2 : Math.PI
+
+      const grad = ctx.createLinearGradient(-outerRX, 0, outerRX, 0)
+      grad.addColorStop(0,    'rgba(91,45,186,0)')
+      grad.addColorStop(0.12, 'rgba(139,92,246,0.28)')
+      grad.addColorStop(0.32, 'rgba(196,181,253,0.65)')
+      grad.addColorStop(0.5,  'rgba(230,215,255,0.80)')
+      grad.addColorStop(0.68, 'rgba(196,181,253,0.65)')
+      grad.addColorStop(0.88, 'rgba(139,92,246,0.28)')
+      grad.addColorStop(1,    'rgba(91,45,186,0)')
+
+      ctx.beginPath()
+      ctx.ellipse(0, 0, outerRX, outerRY, 0, startAngle, endAngle)
+      ctx.strokeStyle = grad
+      ctx.lineWidth = behind ? 3.5 : 5.5
+      ctx.globalAlpha = behind ? 0.42 : 0.88
+      ctx.stroke()
+
+      // Cassini gap
+      ctx.beginPath()
+      ctx.ellipse(0, 0, midRX, midRY, 0, startAngle, endAngle)
+      ctx.strokeStyle = 'rgba(20,10,50,0.55)'
+      ctx.lineWidth = behind ? 3 : 5
+      ctx.globalAlpha = 1
+      ctx.stroke()
+
+      // Inner thin ring
+      ctx.beginPath()
+      ctx.ellipse(0, 0, innerRX, innerRY, 0, startAngle, endAngle)
+      ctx.strokeStyle = 'rgba(196,181,253,0.25)'
+      ctx.lineWidth = 1.2
+      ctx.globalAlpha = behind ? 0.22 : 0.52
+      ctx.stroke()
+
+      ctx.restore()
+    }
+
+    // ── Asteroids ───────────────────────────────────────────────────────
     const astColors: [number, number, number][] = [
       [196, 181, 253], [167, 139, 250], [221, 214, 254],
-      [139, 92, 246], [109, 40, 217], [232, 220, 255],
+      [139,  92, 246], [109,  40, 217], [232, 220, 255],
     ]
-
     const asteroids: Asteroid[] = Array.from({ length: 7 }, (_, i) => {
       const tilt = (Math.random() - 0.5) * 0.78
-      const col = astColors[i % astColors.length]
+      const col  = astColors[i % astColors.length]
       return {
         angle: (i / 7) * Math.PI * 2 + Math.random() * 0.5,
         speed: 0.0022 + Math.random() * 0.0038,
@@ -57,65 +179,16 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
       }
     })
 
-    let rotation = 0
+    let rotation  = 0
     let logoAngle = 0
     let raf: number
 
-    function drawRing(behind: boolean) {
-      ctx.save()
-      ctx.translate(CX, CY)
-      const outerRX = R * 1.88
-      const outerRY = R * 0.235
-      const midRX   = R * 1.58
-      const midRY   = R * 0.197
-      const innerRX = R * 1.34
-      const innerRY = R * 0.165
-
-      const startAngle = behind ? Math.PI : 0
-      const endAngle   = behind ? Math.PI * 2 : Math.PI
-
-      // Outer ring
-      const grad = ctx.createLinearGradient(-outerRX, 0, outerRX, 0)
-      grad.addColorStop(0,    'rgba(91,45,186,0)')
-      grad.addColorStop(0.12, 'rgba(139,92,246,0.28)')
-      grad.addColorStop(0.32, 'rgba(196,181,253,0.65)')
-      grad.addColorStop(0.5,  'rgba(230,215,255,0.78)')
-      grad.addColorStop(0.68, 'rgba(196,181,253,0.65)')
-      grad.addColorStop(0.88, 'rgba(139,92,246,0.28)')
-      grad.addColorStop(1,    'rgba(91,45,186,0)')
-
-      ctx.beginPath()
-      ctx.ellipse(0, 0, outerRX, outerRY, 0, startAngle, endAngle)
-      ctx.strokeStyle = grad
-      ctx.lineWidth = behind ? 3.5 : 5.5
-      ctx.globalAlpha = behind ? 0.42 : 0.85
-      ctx.stroke()
-
-      // Mid ring (Cassini gap effect)
-      ctx.beginPath()
-      ctx.ellipse(0, 0, midRX, midRY, 0, startAngle, endAngle)
-      ctx.strokeStyle = 'rgba(167,139,250,0.08)'
-      ctx.lineWidth = behind ? 4 : 7
-      ctx.globalAlpha = 1
-      ctx.stroke()
-
-      // Inner thin ring
-      ctx.beginPath()
-      ctx.ellipse(0, 0, innerRX, innerRY, 0, startAngle, endAngle)
-      ctx.strokeStyle = 'rgba(196,181,253,0.22)'
-      ctx.lineWidth = 1.2
-      ctx.globalAlpha = behind ? 0.22 : 0.48
-      ctx.stroke()
-
-      ctx.restore()
-    }
-
     const draw = () => {
       ctx.clearRect(0, 0, S, S)
-      rotation += 0.0016
+      rotation  += 0.0016
       logoAngle += 0.0042
 
-      // ── Outer atmosphere glow ──
+      // Outer atmosphere glow
       const atm = ctx.createRadialGradient(CX, CY, R * 0.8, CX, CY, R * 2.1)
       atm.addColorStop(0,   'rgba(109,40,217,0.20)')
       atm.addColorStop(0.4, 'rgba(91,45,186,0.08)')
@@ -125,7 +198,6 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
       ctx.arc(CX, CY, R * 2.1, 0, Math.PI * 2)
       ctx.fill()
 
-      // ── Ring behind planet ──
       drawRing(true)
 
       // ── Planet body ──
@@ -153,11 +225,10 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
       ctx.arc(CX, CY, R, 0, Math.PI * 2)
       ctx.clip()
 
-      // Latitude rings
       for (let lat = -65; lat <= 65; lat += 22) {
         const rad = (lat * Math.PI) / 180
-        const ry = CY + R * Math.sin(rad)
-        const rr = R * Math.cos(rad)
+        const ry  = CY + R * Math.sin(rad)
+        const rr  = R * Math.cos(rad)
         if (rr < 1) continue
         const a = 0.04 + 0.09 * Math.pow(Math.cos(rad), 2)
         ctx.strokeStyle = `rgba(196,181,253,${a.toFixed(2)})`
@@ -167,9 +238,8 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
         ctx.stroke()
       }
 
-      // Longitude meridians (rotating)
       for (let i = 0; i < 9; i++) {
-        const lng = (i / 9) * Math.PI * 2 + rotation
+        const lng  = (i / 9) * Math.PI * 2 + rotation
         const cosL = Math.cos(lng)
         if (cosL < 0) continue
         const alpha = cosL * 0.17
@@ -186,57 +256,34 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
         ctx.stroke()
       }
 
-      // ── Full Baral logo rotating on sphere surface ──
+      // ── Full Baral logo — drawn natively (no SVG text → canvas limitation) ──
       const logoFace = Math.cos(logoAngle)
-      if (logoFace > -0.08 && logoImg.complete && logoImg.naturalWidth > 0) {
-        const faceAlpha = Math.max(0, logoFace)
+      if (logoFace > -0.08) {
+        const faceAlpha = Math.max(0, logoFace) * 0.95
         const logoX = CX + Math.sin(logoAngle) * R * 0.28
         const logoY = CY
-
-        ctx.save()
-        ctx.translate(logoX, logoY)
-        ctx.scale(logoFace, 1)           // perspective X-squish as it wraps sphere
-        ctx.globalAlpha = faceAlpha * 0.94
-
-        // Purple glow behind logo
-        const lglow = ctx.createRadialGradient(0, 0, 0, 0, 0, LOGO_W * 0.6)
-        lglow.addColorStop(0, `rgba(91,45,186,${(faceAlpha * 0.65).toFixed(2)})`)
-        lglow.addColorStop(0.5, `rgba(91,45,186,${(faceAlpha * 0.2).toFixed(2)})`)
-        lglow.addColorStop(1, 'transparent')
-        ctx.fillStyle = lglow
-        ctx.beginPath()
-        ctx.arc(0, 0, LOGO_W * 0.6, 0, Math.PI * 2)
-        ctx.fill()
-
-        // Draw full logo (icon + BARAL + ESTRATEGIA INTEGRAL CREATIVA)
-        ctx.drawImage(
-          logoImg,
-          0, 0, 200, 60,
-          -LOGO_W / 2, -LOGO_H / 2, LOGO_W, LOGO_H
-        )
-
-        ctx.restore()
+        drawLogo(logoFace, faceAlpha, logoX, logoY)
       }
 
-      // ── Specular highlight ──
+      // Specular highlight
       const spec = ctx.createRadialGradient(
         CX - R * 0.35, CY - R * 0.36, 0,
         CX - R * 0.22, CY - R * 0.26, R * 0.68
       )
-      spec.addColorStop(0, 'rgba(255,255,255,0.24)')
-      spec.addColorStop(0.28, 'rgba(255,255,255,0.07)')
-      spec.addColorStop(1, 'transparent')
+      spec.addColorStop(0,    'rgba(255,255,255,0.22)')
+      spec.addColorStop(0.28, 'rgba(255,255,255,0.06)')
+      spec.addColorStop(1,    'transparent')
       ctx.fillStyle = spec
       ctx.fillRect(CX - R, CY - R, R * 2, R * 2)
 
       // Lens flare
       const lfR = R * 0.065
-      const lfX = CX - R * 0.4
-      const lfY = CY - R * 0.4
-      const lf = ctx.createRadialGradient(lfX, lfY, 0, lfX, lfY, lfR)
-      lf.addColorStop(0, 'rgba(255,255,255,0.6)')
-      lf.addColorStop(0.4, 'rgba(255,255,255,0.15)')
-      lf.addColorStop(1, 'transparent')
+      const lfX = CX - R * 0.40
+      const lfY = CY - R * 0.40
+      const lf  = ctx.createRadialGradient(lfX, lfY, 0, lfX, lfY, lfR)
+      lf.addColorStop(0,   'rgba(255,255,255,0.65)')
+      lf.addColorStop(0.4, 'rgba(255,255,255,0.14)')
+      lf.addColorStop(1,   'transparent')
       ctx.fillStyle = lf
       ctx.beginPath()
       ctx.arc(lfX, lfY, lfR, 0, Math.PI * 2)
@@ -244,7 +291,7 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
 
       ctx.restore()
 
-      // ── Atmosphere rim ──
+      // Atmosphere rim
       ctx.beginPath()
       ctx.arc(CX, CY, R + 1.5, 0, Math.PI * 2)
       ctx.strokeStyle = 'rgba(196,181,253,0.52)'
@@ -257,7 +304,6 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
       ctx.lineWidth = 9
       ctx.stroke()
 
-      // ── Ring in front ──
       drawRing(false)
 
       // ── Asteroids ──
@@ -265,8 +311,8 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
         ast.angle += ast.speed
         const ox = Math.cos(ast.angle) * ast.orbitRX
         const oy = Math.sin(ast.angle) * ast.orbitRY
-        const x = CX + ox * ast.tiltCos - oy * ast.tiltSin
-        const y = CY + ox * ast.tiltSin + oy * ast.tiltCos
+        const x  = CX + ox * ast.tiltCos - oy * ast.tiltSin
+        const y  = CY + ox * ast.tiltSin + oy * ast.tiltCos
 
         ast.trail.push({ x, y })
         if (ast.trail.length > 16) ast.trail.shift()
@@ -276,7 +322,7 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
             const ta = (t / ast.trail.length) * 0.52
             ctx.beginPath()
             ctx.moveTo(ast.trail[t - 1].x, ast.trail[t - 1].y)
-            ctx.lineTo(ast.trail[t].x, ast.trail[t].y)
+            ctx.lineTo(ast.trail[t].x,     ast.trail[t].y)
             ctx.strokeStyle = `rgba(${ast.r},${ast.g},${ast.b},${ta.toFixed(3)})`
             ctx.lineWidth = ast.size * 0.42 * (t / ast.trail.length)
             ctx.lineCap = 'round'
