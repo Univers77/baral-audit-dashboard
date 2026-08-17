@@ -1,6 +1,7 @@
 'use client'
 
 import type { AuditResult } from '@/lib/scanner/types'
+import type { GA4Metrics } from '@/lib/ga4/types'
 import { TriangleAlert } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -19,7 +20,7 @@ function formatDate(iso: string) {
   } catch { return iso }
 }
 
-export function Hero({ scanResult }: { scanResult: AuditResult | null }) {
+export function Hero({ scanResult, ga4Data }: { scanResult: AuditResult | null; ga4Data?: GA4Metrics | null }) {
   const [progress, setProgress] = useState(0)
 
   useEffect(() => {
@@ -108,6 +109,17 @@ export function Hero({ scanResult }: { scanResult: AuditResult | null }) {
           </span>
           DIAGNÓSTICO EN VIVO · {scanResult.domain.toUpperCase()} · {formatDate(scanResult.scanDate).toUpperCase()}
         </div>
+
+        {/* GA4 connected badge */}
+        {ga4Data && (
+          <div
+            className="flex items-center gap-2 rounded-full px-3.5 py-1.5 font-mono text-[10px] tracking-[0.14em]"
+            style={{ background: 'oklch(0.86 0.19 155 / 0.08)', border: '1px solid oklch(0.86 0.19 155 / 0.3)', color: 'var(--nova)' }}
+          >
+            <span className="size-1.5 rounded-full bg-[var(--nova)]" />
+            GA4 CONECTADO · {ga4Data.sessions.toLocaleString()} SESIONES · {ga4Data.engagementRate}% ENGAGEMENT
+          </div>
+        )}
 
         <h1 className="font-display max-w-4xl text-[clamp(2.4rem,6.4vw,4.6rem)] leading-[0.98] font-semibold tracking-[-0.02em] text-balance">
           Tu web cartografiada como

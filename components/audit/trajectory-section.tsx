@@ -1,16 +1,22 @@
 'use client'
 
-import { CosmicButton, Reveal, SectionHeader } from '@/components/cosmos/primitives'
+import { Reveal, SectionHeader } from '@/components/cosmos/primitives'
 import { funnelStages, hypotheses, priorityMeta } from '@/lib/audit-data'
 import type { AuditResult } from '@/lib/scanner/types'
+import type { GA4Metrics } from '@/lib/ga4/types'
+import { GA4Connect } from '@/components/ga4/ga4-connect'
 import { useState } from 'react'
 
 export function TrajectorySection({
   scanResult,
   onFocusFinding,
+  onGA4Data,
+  ga4Data,
 }: {
   scanResult: AuditResult | null
   onFocusFinding: (id: string) => void
+  onGA4Data: (data: GA4Metrics) => void
+  ga4Data: GA4Metrics | null
 }) {
   const [openStage, setOpenStage] = useState<string | null>(null)
 
@@ -186,11 +192,14 @@ export function TrajectorySection({
           </div>
         </div>
 
-        {/* Behaviour data gap */}
+        {/* GA4 live data block */}
         <Reveal delay={120} className="mt-16 block">
           <div
-            className="relative overflow-hidden rounded-3xl p-10 text-center"
-            style={{ border: '1px dashed var(--border)', background: 'oklch(1 0 0 / 0.02)' }}
+            className="relative overflow-hidden rounded-3xl p-8"
+            style={{
+              border: ga4Data ? '1px solid oklch(0.86 0.19 155 / 0.25)' : '1px dashed var(--border)',
+              background: 'oklch(1 0 0 / 0.02)',
+            }}
           >
             <div
               aria-hidden
@@ -198,15 +207,16 @@ export function TrajectorySection({
               style={{ background: 'radial-gradient(circle, oklch(0.62 0.24 300 / 0.6), transparent 70%)' }}
             />
             <div className="relative">
-              <span className="text-muted-foreground/70 font-mono text-3xl">◐</span>
-              <h3 className="font-display mt-3 text-xl font-semibold">Telemetría de comportamiento no disponible</h3>
-              <p className="text-muted-foreground mx-auto mt-3 max-w-lg text-[14px] leading-relaxed text-pretty">
-                Esta sección requiere acceso a Google Analytics 4. Con datos podríamos trazar tiempo medio de sesión,
-                páginas más visitadas, puntos de abandono reales y reparto por dispositivo — y dejar de estimar.
-              </p>
-              <div className="mt-6 flex justify-center">
-                <CosmicButton>Conectar Analytics →</CosmicButton>
-              </div>
+              {!ga4Data && (
+                <div className="text-center mb-6">
+                  <span className="font-mono text-3xl text-muted-foreground/70">◐</span>
+                  <h3 className="font-display mt-3 text-xl font-semibold">Telemetría de comportamiento</h3>
+                  <p className="text-muted-foreground mx-auto mt-2 max-w-lg text-[13px] leading-relaxed text-pretty">
+                    Conecta Google Analytics 4 para ver sesiones, dispositivos, canales y páginas reales del sitio auditado — sin estimaciones.
+                  </p>
+                </div>
+              )}
+              <GA4Connect onData={onGA4Data} />
             </div>
           </div>
         </Reveal>

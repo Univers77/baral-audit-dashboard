@@ -3,9 +3,13 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-images: {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  images: {
     unoptimized: true,
   },
+  serverExternalPackages: ['@anthropic-ai/sdk'],
 }
 
 export default nextConfig

@@ -3,8 +3,39 @@
 import { references, site, totalFindings } from '@/lib/audit-data'
 import { CosmicButton, Reveal, SectionHeader, TiltCard } from '@/components/cosmos/primitives'
 import { BaralPlanet } from '@/components/audit/baral-planet'
+import type { AuditResult } from '@/lib/scanner/types'
+import type { GA4Metrics } from '@/lib/ga4/types'
+import { getHistory } from '@/lib/history'
+import { useEffect, useState } from 'react'
+import type { ScanHistoryEntry } from '@/lib/ga4/types'
 
-export function FooterSection() {
+export function FooterSection({
+  scanResult,
+  ga4Data,
+}: {
+  scanResult?: AuditResult | null
+  ga4Data?: GA4Metrics | null
+}) {
+  const [history, setHistory] = useState<ScanHistoryEntry[]>([])
+
+  useEffect(() => {
+    setHistory(getHistory())
+  }, [scanResult])
+
+  function downloadJSON() {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      scan: scanResult ?? null,
+      ga4: ga4Data ?? null,
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `audit-${scanResult?.domain ?? 'report'}-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
   return (
     <>
       <section id="referencias" className="relative border-t border-border/60 py-12 md:py-16">
@@ -85,7 +116,10 @@ export function FooterSection() {
               comparar la trayectoria real contra este punto de partida.
             </p>
             <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-              <CosmicButton onClick={() => window.print()}>Exportar informe</CosmicButton>
+              <CosmicButton onClick={() => window.print()}>Descargar PDF</CosmicButton>
+              <CosmicButton variant="outline" onClick={downloadJSON}>
+                Exportar JSON{ga4Data ? ' + GA4' : ''}
+              </CosmicButton>
               <CosmicButton
                 variant="outline"
                 onClick={() => document.getElementById('plan')?.scrollIntoView({ behavior: 'smooth' })}
@@ -93,6 +127,38 @@ export function FooterSection() {
                 Ver plan por ondas
               </CosmicButton>
             </div>
+
+            {/* Scan history */}
+            {history.length > 0 && (
+              <div className="mt-8 w-full max-w-lg mx-auto">
+                <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground/50">
+                  Historial de análisis
+                </p>
+                <div className="space-y-2">
+                  {history.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="flex items-center gap-3 rounded-xl px-4 py-2.5"
+                      style={{ background: 'oklch(1 0 0 / 0.02)', border: '1px solid var(--border)' }}
+                    >
+                      <span className="font-mono text-xs font-semibold tabular-nums text-gradient-quasar">
+                        {entry.score}
+                      </span>
+                      <span className="flex-1 truncate font-mono text-[11px] text-foreground/70">{entry.url}</span>
+                      {entry.ga4Connected && (
+                        <span className="shrink-0 rounded-full px-2 py-0.5 font-mono text-[9px]"
+                          style={{ background: 'oklch(0.86 0.19 155 / 0.1)', color: 'var(--nova)', border: '1px solid oklch(0.86 0.19 155 / 0.2)' }}>
+                          GA4
+                        </span>
+                      )}
+                      <span className="shrink-0 font-mono text-[10px] text-muted-foreground/40">
+                        {new Date(entry.timestamp).toLocaleDateString('es-BO', { day: 'numeric', month: 'short' })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </Reveal>
         </div>
       </section>

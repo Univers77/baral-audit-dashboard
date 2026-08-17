@@ -17,13 +17,15 @@ import { FooterSection } from '@/components/audit/footer-section'
 import { UrlScanner } from '@/components/scanner/url-scanner'
 import type { Priority } from '@/lib/audit-data'
 import type { AuditResult } from '@/lib/scanner/types'
+import type { GA4Metrics } from '@/lib/ga4/types'
+import { saveHistory } from '@/lib/history'
 
 export default function Page() {
   const [filter, setFilter] = useState<Priority | 'ALL'>('ALL')
   const [focusId, setFocusId] = useState<string | null>(null)
   const [scanResult, setScanResult] = useState<AuditResult | null>(null)
+  const [ga4Data, setGa4Data] = useState<GA4Metrics | null>(null)
 
-  // Restore previous scan from sessionStorage on mount
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem('auditorx-last-result')
@@ -33,9 +35,16 @@ export default function Page() {
 
   const handleResult = useCallback((r: AuditResult) => {
     setScanResult(r)
+    setGa4Data(null)
     setFilter('ALL')
     setFocusId(null)
+    saveHistory(r, false)
   }, [])
+
+  const handleGA4Data = useCallback((data: GA4Metrics) => {
+    setGa4Data(data)
+    if (scanResult) saveHistory(scanResult, true)
+  }, [scanResult])
 
   const focusFinding = useCallback((id: string) => {
     setFilter('ALL')
@@ -59,14 +68,19 @@ export default function Page() {
           className="pointer-events-none my-2 h-px mx-auto max-w-5xl"
           style={{ background: 'linear-gradient(90deg,transparent,var(--border),transparent)' }}
         />
-        <Hero scanResult={scanResult} />
+        <Hero scanResult={scanResult} ga4Data={ga4Data} />
         <ConstellationMap scanResult={scanResult} onFilter={setFilter} onFocusFinding={focusFinding} />
         <FindingsSection scanResult={scanResult} filter={filter} setFilter={setFilter} focusId={focusId} />
         <MetricsSection scanResult={scanResult} />
         <CompetitiveSection />
-        <TrajectorySection scanResult={scanResult} onFocusFinding={focusFinding} />
+        <TrajectorySection
+          scanResult={scanResult}
+          onFocusFinding={focusFinding}
+          onGA4Data={handleGA4Data}
+          ga4Data={ga4Data}
+        />
         <RoadmapSection scanResult={scanResult} onFocusFinding={focusFinding} />
-        <FooterSection />
+        <FooterSection scanResult={scanResult} ga4Data={ga4Data} />
       </main>
     </div>
   )
