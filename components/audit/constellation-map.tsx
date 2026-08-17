@@ -97,9 +97,62 @@ export function ConstellationMap({
                 La constelación de lo que <span className="text-gradient-cool">necesita atención</span>
               </>
             }
-            description="Cada estrella es un hallazgo. La altura marca su magnitud (impacto en negocio, no dificultad técnica) y la posición horizontal, la etapa del funnel donde te está costando dinero."
+            description="Cada estrella es un problema real detectado en tu sitio. Las que están más arriba son las que más dinero te están costando ahora mismo. Las de la izquierda afectan a quienes aún no te conocen; las de la derecha, a quienes ya están listos para contratarte."
             align="center"
           />
+        </Reveal>
+
+        {/* Business-language legend */}
+        <Reveal delay={60}>
+          <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4 mx-auto max-w-4xl">
+            {[
+              { p: 'P0', name: 'SUPERNOVA', color: 'var(--pulsar)', glow: 'oklch(0.72 0.2 15 / 0.3)', biz: 'Pérdida activa de clientes ahora mismo', sub: 'Requiere acción urgente esta semana' },
+              { p: 'P1', name: 'GIGANTE ROJA', color: 'var(--solar)', glow: 'oklch(0.85 0.13 88 / 0.25)', biz: 'Oportunidades que se escapan cada día', sub: 'Impacto alto en conversión y tráfico' },
+              { p: 'P2', name: 'ENANA BLANCA', color: 'var(--star)', glow: 'oklch(0.88 0.14 195 / 0.2)', biz: 'Mejoras que suman en próximo sprint', sub: 'Baja complejidad, buen retorno' },
+              { p: 'P3', name: 'NEBULOSA', color: 'var(--nova)', glow: 'oklch(0.86 0.19 155 / 0.18)', biz: 'Backlog para cuando crezcas', sub: 'No urgente, pero vale la pena registrar' },
+            ].map((item) => (
+              <div
+                key={item.p}
+                className="glass rounded-2xl p-3 flex flex-col gap-1.5"
+                style={{ border: `1px solid color-mix(in oklch, ${item.color} 25%, var(--border))` }}
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className="size-2.5 rounded-full shrink-0"
+                    style={{ background: item.color, boxShadow: `0 0 10px 2px ${item.glow}` }}
+                  />
+                  <span className="font-mono text-[9px] font-bold tracking-[0.14em]" style={{ color: item.color }}>
+                    {item.p} · {item.name}
+                  </span>
+                </div>
+                <p className="text-foreground/90 text-[11.5px] font-medium leading-snug">{item.biz}</p>
+                <p className="text-muted-foreground/60 text-[10px] leading-snug">{item.sub}</p>
+              </div>
+            ))}
+          </div>
+        </Reveal>
+
+        {/* Stage labels legend */}
+        <Reveal delay={80}>
+          <div className="mt-3 mx-auto max-w-4xl glass rounded-2xl px-4 py-3" style={{ border: '1px solid var(--border)' }}>
+            <p className="font-mono text-[9px] tracking-[0.18em] text-muted-foreground/50 mb-2">ETAPAS DEL VIAJE DEL CLIENTE →</p>
+            <div className="flex flex-wrap gap-x-5 gap-y-1">
+              {[
+                { key: 'DISCOVER', es: 'Google / redes sociales te encuentran' },
+                { key: 'ARRIVE', es: 'El visitante llega y decide quedarse' },
+                { key: 'UNDERSTAND', es: 'Entiende qué ofreces y si le sirve' },
+                { key: 'TRUST', es: 'Decide si confiar en tu marca' },
+                { key: 'ACTION', es: 'Hace clic en contactar o cotizar' },
+                { key: 'CONVERT', es: 'Completa el formulario / llamada' },
+              ].map((s) => (
+                <span key={s.key} className="text-[10.5px] flex items-center gap-1.5">
+                  <span className="font-mono text-[9px] font-bold" style={{ color: 'var(--star)' }}>{s.key}</span>
+                  <span className="text-muted-foreground/60">=</span>
+                  <span className="text-muted-foreground/80">{s.es}</span>
+                </span>
+              ))}
+            </div>
+          </div>
         </Reveal>
 
         {/* Star chart */}

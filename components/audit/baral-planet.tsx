@@ -37,8 +37,11 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
     const CY = S / 2
     const R = S * 0.33
 
-    // Asteroid colors as rgb values to avoid string ops in loop
-    const astColors = [
+    // Pre-load the Baral B icon as image (draws just the icon square)
+    const logoImg = new Image()
+    logoImg.src = '/baral-logo.svg'
+
+    const astColors: [number, number, number][] = [
       [196, 181, 253],
       [167, 139, 250],
       [221, 214, 254],
@@ -57,19 +60,54 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
         tiltSin: Math.sin(tilt),
         tiltCos: Math.cos(tilt),
         size: 1.4 + Math.random() * 2.2,
-        r: col[0],
-        g: col[1],
-        b: col[2],
+        r: col[0], g: col[1], b: col[2],
         trail: [],
       }
     })
 
     let rotation = 0
+    let logoAngle = 0   // angle controlling B logo face (0 = front)
     let raf: number
+
+    // Draw planet ring (elliptical orbit belt)
+    function drawRing(behind: boolean) {
+      ctx.save()
+      ctx.translate(CX, CY)
+      const ringRX = R * 1.72
+      const ringRY = R * 0.22
+      const ringGrad = ctx.createLinearGradient(-ringRX, 0, ringRX, 0)
+      ringGrad.addColorStop(0, 'rgba(139,92,246,0)')
+      ringGrad.addColorStop(0.25, 'rgba(139,92,246,0.18)')
+      ringGrad.addColorStop(0.5, 'rgba(196,181,253,0.55)')
+      ringGrad.addColorStop(0.75, 'rgba(139,92,246,0.18)')
+      ringGrad.addColorStop(1, 'rgba(139,92,246,0)')
+
+      // Behind: top half arc — in front of: bottom half arc
+      const startAngle = behind ? Math.PI : 0
+      const endAngle = behind ? Math.PI * 2 : Math.PI
+
+      ctx.beginPath()
+      ctx.ellipse(0, 0, ringRX, ringRY, 0, startAngle, endAngle)
+      ctx.strokeStyle = ringGrad
+      ctx.lineWidth = behind ? 2.5 : 4.5
+      ctx.globalAlpha = behind ? 0.38 : 0.72
+      ctx.stroke()
+
+      // Inner thin ring
+      ctx.beginPath()
+      ctx.ellipse(0, 0, ringRX * 0.83, ringRY * 0.83, 0, startAngle, endAngle)
+      ctx.strokeStyle = 'rgba(196,181,253,0.18)'
+      ctx.lineWidth = 1.2
+      ctx.globalAlpha = behind ? 0.2 : 0.45
+      ctx.stroke()
+
+      ctx.restore()
+    }
 
     const drawFrame = () => {
       ctx.clearRect(0, 0, S, S)
       rotation += 0.0022
+      logoAngle += 0.006  // B logo orbits at its own speed
 
       /* ── outer atmosphere glow ── */
       const glow = ctx.createRadialGradient(CX, CY, R * 0.7, CX, CY, R * 1.9)
@@ -80,6 +118,9 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
       ctx.beginPath()
       ctx.arc(CX, CY, R * 1.9, 0, Math.PI * 2)
       ctx.fill()
+
+      /* ── ring behind planet ── */
+      drawRing(true)
 
       /* ── planet body ── */
       const grad = ctx.createRadialGradient(CX - R * 0.28, CY - R * 0.3, R * 0.05, CX + R * 0.1, CY + R * 0.1, R)
@@ -93,7 +134,7 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
       ctx.fillStyle = grad
       ctx.fill()
 
-      /* ── grid lines clipped to sphere ── */
+      /* ── grid lines + B logo clipped to sphere ── */
       ctx.save()
       ctx.beginPath()
       ctx.arc(CX, CY, R, 0, Math.PI * 2)
@@ -113,16 +154,14 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
         ctx.stroke()
       }
 
-      // Longitude meridians — parametric sphere projection
+      // Longitude meridians
       for (let i = 0; i < 9; i++) {
         const lng = (i / 9) * Math.PI * 2 + rotation
         const cosL = Math.cos(lng)
-        if (cosL < -0.05) continue // backface cull
+        if (cosL < -0.05) continue
         const alpha = cosL * 0.22
         ctx.strokeStyle = `rgba(167,139,250,${alpha.toFixed(3)})`
         ctx.lineWidth = 0.8
-
-        // Path from top pole to bottom pole with bezier bulge
         const bulge = R * Math.sin(lng)
         ctx.beginPath()
         ctx.moveTo(CX + bulge * 0.05, CY - R)
@@ -134,7 +173,47 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
         ctx.stroke()
       }
 
-      // Specular highlight
+      // ── Baral B logo on sphere surface (Superman crystal effect) ──
+      // logoFace goes -1 (backface) to +1 (front center)
+      const logoFace = Math.cos(logoAngle)
+      if (logoFace > -0.05 && logoImg.complete && logoImg.naturalWidth > 0) {
+        const logoSize = R * 0.62
+        const faceAlpha = Math.max(0, logoFace)
+        // Horizontal shift as it rotates around the sphere
+        const logoX = CX + Math.sin(logoAngle) * R * 0.35
+        const logoY = CY
+
+        ctx.save()
+        ctx.translate(logoX, logoY)
+        // Perspective squish: compress X axis as logo wraps around sphere
+        ctx.scale(logoFace, 1)
+        ctx.globalAlpha = faceAlpha * 0.88
+
+        // Glow behind the logo
+        const lglow = ctx.createRadialGradient(0, 0, 0, 0, 0, logoSize)
+        lglow.addColorStop(0, `rgba(91,45,186,${faceAlpha * 0.55})`)
+        lglow.addColorStop(1, 'transparent')
+        ctx.fillStyle = lglow
+        ctx.beginPath()
+        ctx.arc(0, 0, logoSize, 0, Math.PI * 2)
+        ctx.fill()
+
+        // Draw only the icon portion of the SVG (first 60×60 of the 200×60 viewBox)
+        // The icon sits at viewBox 0 0 60 60 within the full 200×60 SVG
+        // Use drawImage with source crop
+        try {
+          ctx.drawImage(
+            logoImg,
+            0, 0, 60, 60,          // src: icon square (first 60px of viewBox width)
+            -logoSize / 2, -logoSize / 2, logoSize, logoSize,
+          )
+        } catch {
+          // image not ready yet
+        }
+        ctx.restore()
+      }
+
+      // Specular highlight (on top of logo)
       const highlight = ctx.createRadialGradient(
         CX - R * 0.32, CY - R * 0.32, 0,
         CX - R * 0.32, CY - R * 0.32, R * 0.7,
@@ -160,11 +239,12 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
       ctx.lineWidth = 6
       ctx.stroke()
 
+      /* ── ring in front of planet ── */
+      drawRing(false)
+
       /* ── asteroids ── */
       for (const ast of asteroids) {
         ast.angle += ast.speed
-
-        // Elliptical orbit with tilt
         const ox = Math.cos(ast.angle) * ast.orbitRX
         const oy = Math.sin(ast.angle) * ast.orbitRY
         const x = CX + ox * ast.tiltCos - oy * ast.tiltSin
@@ -173,7 +253,6 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
         ast.trail.push({ x, y })
         if (ast.trail.length > 18) ast.trail.shift()
 
-        // Trail
         if (ast.trail.length > 2) {
           for (let t = 1; t < ast.trail.length; t++) {
             const ta = (t / ast.trail.length) * 0.55
@@ -187,7 +266,6 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
           }
         }
 
-        // Glow halo
         const halo = ctx.createRadialGradient(x, y, 0, x, y, ast.size * 3.5)
         halo.addColorStop(0, `rgba(${ast.r},${ast.g},${ast.b},0.7)`)
         halo.addColorStop(0.45, `rgba(${ast.r},${ast.g},${ast.b},0.18)`)
@@ -197,7 +275,6 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
         ctx.arc(x, y, ast.size * 3.5, 0, Math.PI * 2)
         ctx.fill()
 
-        // Core dot
         ctx.fillStyle = `rgba(${ast.r},${ast.g},${ast.b},0.95)`
         ctx.beginPath()
         ctx.arc(x, y, ast.size, 0, Math.PI * 2)

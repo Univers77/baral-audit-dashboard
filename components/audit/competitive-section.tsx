@@ -212,11 +212,27 @@ export function CompetitiveSection() {
                 ))}
               </div>
 
-              <p className="text-muted-foreground text-[14px] leading-relaxed text-pretty">
-                Tu sitio brilla en <span className="text-nova font-semibold">SEO</span> y contenido, pero cae por debajo
-                del promedio del sector en <span className="text-pulsar font-semibold">velocidad</span>, confianza y
-                experiencia de usuario. Es exactamente el terreno donde el rival peligroso te está ganando tráfico
-                comprado y orgánico al mismo tiempo.
+              {/* Axis glossary */}
+              <div className="flex flex-col gap-1.5 mt-1">
+                {[
+                  { axis: 'Velocidad', icon: '⚡', explain: '¿Cuánto espera el visitante para ver tu sitio? Cada segundo de espera = más rebotes.' },
+                  { axis: 'SEO', icon: '🔍', explain: '¿Google te encuentra antes que a tus competidores? Define cuánto tráfico gratuito recibes.' },
+                  { axis: 'Confianza', icon: '🛡️', explain: 'HTTPS, reseñas, certificados, datos de contacto claros. Sin esto, el visitante se va.' },
+                  { axis: 'UX', icon: '🖥️', explain: '¿Es fácil navegar en móvil? El 70% de tus visitantes llegan desde el celular.' },
+                  { axis: 'Conversión', icon: '🎯', explain: '¿Hay CTAs claros? Sin botones visibles, el interesado no sabe cómo contactarte.' },
+                  { axis: 'Contenido', icon: '📄', explain: '¿Explica claramente qué ofreces y para quién? El copy decide si el visitante se queda.' },
+                ].map((a) => (
+                  <div key={a.axis} className="flex items-start gap-2 rounded-xl px-3 py-1.5" style={{ background: 'oklch(1 0 0 / 0.03)' }}>
+                    <span className="text-[12px] shrink-0 mt-0.5">{a.icon}</span>
+                    <div>
+                      <span className="font-mono text-[10px] font-bold" style={{ color: 'var(--star)' }}>{a.axis.toUpperCase()}</span>
+                      <span className="text-muted-foreground/70 text-[11px]"> — {a.explain}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-muted-foreground text-[13px] leading-relaxed text-pretty mt-2">
+                Tu sitio supera el benchmark estimado en <span className="text-nova font-semibold">SEO y contenido</span>, pero cae por debajo en <span className="text-pulsar font-semibold">velocidad, confianza y UX</span> — exactamente donde los competidores te están ganando tráfico.
               </p>
             </div>
           </Reveal>
