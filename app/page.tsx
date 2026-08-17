@@ -14,6 +14,7 @@ import { CompetitiveSection } from '@/components/audit/competitive-section'
 import { TrajectorySection } from '@/components/audit/trajectory-section'
 import { RoadmapSection } from '@/components/audit/roadmap-section'
 import { FooterSection } from '@/components/audit/footer-section'
+import { ExportSection } from '@/components/audit/export-section'
 import { UrlScanner } from '@/components/scanner/url-scanner'
 import type { Priority } from '@/lib/audit-data'
 import type { AuditResult } from '@/lib/scanner/types'
@@ -80,6 +81,7 @@ export default function Page() {
           ga4Data={ga4Data}
         />
         <RoadmapSection scanResult={scanResult} onFocusFinding={focusFinding} />
+        <ExportSection scanResult={scanResult} ga4Data={ga4Data} />
         <FooterSection scanResult={scanResult} ga4Data={ga4Data} />
       </main>
     </div>
