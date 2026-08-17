@@ -1,5 +1,6 @@
 'use client'
 
+import { BaralLogo } from '@/components/brand/baral-logo'
 import { site } from '@/lib/audit-data'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
@@ -73,13 +74,8 @@ export function SiteNav() {
           className="group flex shrink-0 items-center gap-2"
           aria-label="Volver al inicio"
         >
-          {/* Baral B mark */}
-          <span
-            className="grid size-8 place-items-center rounded-lg font-bold text-white text-[15px] shrink-0"
-            style={{ background: 'linear-gradient(135deg,#7C3AED,#5B2DBA)', boxShadow: '0 0 18px 4px #7C3AED55' }}
-          >
-            B
-          </span>
+          {/* Marca oficial. El arte ya trae su propio halo — sin sombras extra. */}
+          <BaralLogo variant="mark" height={30} priority className="shrink-0" />
           <span className="hidden sm:block font-semibold text-[13px] tracking-widest leading-none">BARAL</span>
         </button>
 

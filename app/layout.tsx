@@ -38,7 +38,11 @@ export const metadata: Metadata = {
     description: 'Analiza cualquier URL en segundos con IA. Hallazgos priorizados con evidencia.',
   },
   icons: {
-    icon: [{ url: '/baral-logo.svg', type: 'image/svg+xml' }],
+    icon: [
+      { url: '/baral-favicon.png', type: 'image/png', sizes: '64x64' },
+      { url: '/baral-mark.png', type: 'image/png', sizes: '256x256' },
+    ],
+    apple: [{ url: '/baral-mark.png', sizes: '256x256' }],
   },
 }
 

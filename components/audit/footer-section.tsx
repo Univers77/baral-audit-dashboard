@@ -3,6 +3,7 @@
 import { references, site, totalFindings } from '@/lib/audit-data'
 import { CosmicButton, Reveal, SectionHeader, TiltCard } from '@/components/cosmos/primitives'
 import { BaralPlanet } from '@/components/audit/baral-planet'
+import { BaralLogo } from '@/components/brand/baral-logo'
 import type { AuditResult } from '@/lib/scanner/types'
 import type { GA4Metrics } from '@/lib/ga4/types'
 import { getHistory } from '@/lib/history'
@@ -263,22 +264,9 @@ export function FooterSection({
 
           {/* Logo + tagline below planet */}
           <div className="text-center flex flex-col items-center gap-5">
-            {/* Logo with glow */}
-            <div className="relative">
-              <div
-                aria-hidden="true"
-                className="absolute inset-0 blur-2xl scale-125 opacity-40"
-                style={{ background: 'linear-gradient(135deg, #7c3aed, #5b2dba)' }}
-              />
-              <img
-                src="/baral-logo.svg"
-                alt="Baral — Estrategia Integral Creativa"
-                width="220"
-                height="66"
-                className="relative"
-                style={{ filter: 'drop-shadow(0 0 24px rgba(139,92,246,0.55)) drop-shadow(0 0 8px rgba(196,181,253,0.3))' }}
-              />
-            </div>
+            {/* Marca oficial. El arte ya trae su halo: apilarle blur + doble
+                drop-shadow lo despegaba del fondo en vez de asentarlo. */}
+            <BaralLogo variant="lockup" height={132} />
 
             {/* Separator line */}
             <div className="flex items-center gap-4 w-full max-w-xs">

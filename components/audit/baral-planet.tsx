@@ -14,8 +14,12 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    const maybeCtx = canvas.getContext('2d')
+    if (!maybeCtx) return
+    // Anotación explícita no-nullable: drawLogo/drawRing son declaraciones de
+    // función (hoisted), y TypeScript descarta el narrowing por control de flujo
+    // dentro de ellas. Sin esto son 28 errores de "ctx is possibly null".
+    const ctx: CanvasRenderingContext2D = maybeCtx
 
     const DPR = Math.min(window.devicePixelRatio || 1, 2)
     const S = size
@@ -29,87 +33,31 @@ export function BaralPlanet({ size = 260 }: { size?: number }) {
     const CY = S / 2
     const R  = S * 0.34
 
-    // Logo dimensions — full 200×60 SVG viewBox ratio
-    const LOGO_W = R * 1.62
-    const LOGO_H = LOGO_W * (60 / 200)
+    // Lockup oficial (400×364). Se usa el PNG y no el SVG antiguo: drawImage
+    // rasteriza PNG sin problema, mientras que un SVG con <text> se dibuja sin
+    // el texto en todos los navegadores.
+    const LOGO_W = R * 1.2
+    const LOGO_H = LOGO_W * (364 / 400)
+    const logoImg = new Image()
+    let logoReady = false
+    logoImg.onload = () => { logoReady = true }
+    logoImg.src = '/baral-lockup.png'
 
-    // B icon path (exact from SVG, SVG coords)
-    const B_PATH_D =
-      'M16 14h14c5.5 0 9 2.8 9 7.2 0 2.8-1.6 5-4 6.2 3.2 1.2 5 3.8 5 7 ' +
-      '0 5-3.8 8.6-10 8.6H16V14z' +
-      'M23 24.8h5.8c2.2 0 3.4-1.2 3.4-3s-1.2-2.8-3.4-2.8H23v5.8z' +
-      'M23 37.2h6.6c2.6 0 4-1.4 4-3.6s-1.4-3.4-4-3.4H23v7z'
-    const bPath = new Path2D(B_PATH_D)
-
-    // ── Draw the full Baral logo natively on canvas ──────────────────────
-    // Avoids SVG-text-in-canvas rendering failure (browsers skip <text> in drawImage)
+    // ── Dibuja el lockup oficial sobre la esfera ─────────────────────────
     function drawLogo(
-      perspScale: number,   // Math.cos(logoAngle) — perspective X squeeze
-      alpha: number,        // opacity
-      cx: number,           // center X on canvas
-      cy: number,           // center Y on canvas
+      perspScale: number,   // Math.cos(logoAngle) — compresión en X por perspectiva
+      alpha: number,
+      cx: number,
+      cy: number,
     ) {
-      if (Math.abs(perspScale) < 0.01) return
-
-      const scale = LOGO_W / 200   // SVG→canvas scale
+      if (Math.abs(perspScale) < 0.01 || !logoReady) return
 
       ctx.save()
       ctx.translate(cx, cy)
       ctx.scale(perspScale, 1)
       ctx.globalAlpha = alpha
-
-      // Purple halo behind logo
-      const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, LOGO_W * 0.6)
-      halo.addColorStop(0,   `rgba(91,45,186,${(alpha * 0.55).toFixed(2)})`)
-      halo.addColorStop(0.4, `rgba(109,40,217,${(alpha * 0.18).toFixed(2)})`)
-      halo.addColorStop(1,   'transparent')
-      ctx.fillStyle = halo
-      ctx.beginPath()
-      ctx.arc(0, 0, LOGO_W * 0.6, 0, Math.PI * 2)
-      ctx.fill()
-
-      // Enter SVG coordinate space (SVG center = 100, 30)
-      ctx.translate(-100 * scale, -30 * scale)
-      ctx.scale(scale, scale)
-
-      // ── Icon: purple rounded rect ──
-      ctx.beginPath()
-      if (ctx.roundRect) {
-        ctx.roundRect(4, 4, 52, 52, 10)
-      } else {
-        // Polyfill for older contexts
-        const [x, y, w, h, r] = [4, 4, 52, 52, 10]
-        ctx.moveTo(x + r, y)
-        ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r)
-        ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r)
-        ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r)
-        ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r)
-        ctx.closePath()
-      }
-      ctx.fillStyle = '#5B2DBA'
-      ctx.shadowColor = 'rgba(139,92,246,0.7)'
-      ctx.shadowBlur = 8
-      ctx.fill()
-      ctx.shadowBlur = 0
-
-      // ── B letter (path from SVG) ──
-      ctx.fillStyle = 'white'
-      ctx.fill(bPath)
-
-      // ── Wordmark: BARAL ──
-      ctx.font = 'bold 17px system-ui,-apple-system,Arial,sans-serif'
-      ctx.fillStyle = 'white'
-      ctx.textAlign = 'left'
-      ctx.textBaseline = 'alphabetic'
-      try { (ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = '1.2px' } catch {}
-      ctx.fillText('BARAL', 66, 29)
-
-      // ── Tagline: ESTRATEGIA INTEGRAL CREATIVA ──
-      ctx.font = '400 8.5px system-ui,-apple-system,Arial,sans-serif'
-      ctx.fillStyle = '#c4b5fd'
-      try { (ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = '1.8px' } catch {}
-      ctx.fillText('ESTRATEGIA INTEGRAL CREATIVA', 66, 46)
-
+      // El arte ya trae su propio halo, no se le añade glow extra.
+      ctx.drawImage(logoImg, -LOGO_W / 2, -LOGO_H / 2, LOGO_W, LOGO_H)
       ctx.restore()
     }
 

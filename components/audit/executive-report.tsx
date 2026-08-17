@@ -70,9 +70,12 @@ export function ExecutiveReport({ scanResult, ga4Data }: { scanResult: AuditResu
       <section style={{ breakAfter: 'page', minHeight: '90vh', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '40px 8px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: PURPLE, display: 'grid', placeItems: 'center' }}>
-              <span style={{ color: 'white', fontWeight: 800, fontSize: 20 }}>B</span>
-            </div>
+            {/* Marca oficial sobre chip oscuro: el arte es claro y sobre papel
+                blanco perdería contraste. */}
+            <span style={{ background: '#140b26', borderRadius: 10, padding: 5, display: 'inline-flex' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/baral-mark.png" alt="" width={34} height={34} style={{ display: 'block' }} />
+            </span>
             <div>
               <p style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>BARAL</p>
               <p style={{ fontSize: 8, letterSpacing: 2, color: PURPLE, margin: 0 }}>ESTRATEGIA INTEGRAL CREATIVA</p>
