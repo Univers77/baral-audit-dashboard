@@ -369,7 +369,7 @@ export function FindingsSection({
             )
           })}
 
-          {detailed.length === 0 && (
+          {scanResult && detailed.length === 0 && (
             <div
               className="glass rounded-3xl p-10 text-center"
               style={{ border: '1px dashed var(--border)' }}
