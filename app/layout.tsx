@@ -19,14 +19,26 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Baral — Diagnóstico Web Integral | Master Web Auditor',
+  title: 'Master Web Auditor — Escáner SEO & Performance',
   description:
-    'Auditoría web profesional de baralintegral.com: 22 hallazgos priorizados, benchmarks competitivos y roadmap de acción por impacto en negocio. Powered by Master Web Auditor.',
+    'Analiza cualquier URL en segundos. Diagnóstico SEO, performance, accesibilidad y conversión con Claude AI. Hallazgos priorizados P0→P3 con evidencia y dirección de solución.',
   generator: 'Master Web Auditor v2.0',
+  metadataBase: new URL('https://baral-audit-dashboard.vercel.app'),
+  openGraph: {
+    title: 'Master Web Auditor — Escáner SEO & Performance',
+    description: 'Analiza cualquier URL en segundos. Diagnóstico SEO, performance, accesibilidad y conversión con IA.',
+    url: 'https://baral-audit-dashboard.vercel.app',
+    siteName: 'Master Web Auditor',
+    locale: 'es_BO',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Master Web Auditor — Escáner SEO & Performance',
+    description: 'Analiza cualquier URL en segundos con IA. Hallazgos priorizados con evidencia.',
+  },
   icons: {
-    icon: [
-      { url: '/baral-logo.svg', type: 'image/svg+xml' },
-    ],
+    icon: [{ url: '/baral-logo.svg', type: 'image/svg+xml' }],
   },
 }
 

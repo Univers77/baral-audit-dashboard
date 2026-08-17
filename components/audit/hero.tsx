@@ -47,7 +47,7 @@ export function Hero({ scanResult }: { scanResult: AuditResult | null }) {
             style={{ border: '1px solid var(--border)' }}
           >
             <span className="size-1.5 rounded-full" style={{ background: 'var(--muted-foreground)' }} />
-            AUDITOR-X · ESPERANDO ESCANEO
+            DIAGNÓSTICO PENDIENTE
           </div>
           <h1 className="font-display max-w-3xl text-[clamp(2rem,5.5vw,4rem)] leading-[0.98] font-semibold tracking-[-0.02em] text-balance">
             Escanea una URL para ver
@@ -132,7 +132,7 @@ export function Hero({ scanResult }: { scanResult: AuditResult | null }) {
         >
           <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
           <span>
-            Análisis automático de <strong>{scanResult.url}</strong> · AUDITOR-X STANDARD · Homepage analizada
+            Análisis automático de <strong>{scanResult.url}</strong> · Nivel ESTÁNDAR · Homepage analizada
           </span>
         </div>
 
@@ -245,13 +245,13 @@ export function Hero({ scanResult }: { scanResult: AuditResult | null }) {
           </div>
         </div>
 
-        {/* AUDITOR-X tripartite scoring */}
+        {/* Tripartite scoring */}
         <div
           className="glass flex w-full max-w-lg flex-col gap-3 rounded-2xl px-5 py-4"
           style={{ border: '1px solid oklch(0.8 0.16 305 / 0.25)' }}
         >
           <p className="font-mono text-[10px] tracking-[0.22em] text-muted-foreground/70">
-            AUDITOR-X · SCORING TRIPARTITO
+            SCORING TRIPARTITO
           </p>
           <div className="grid grid-cols-3 gap-3">
             {[

@@ -7,7 +7,7 @@ import { BaralPlanet } from '@/components/audit/baral-planet'
 export function FooterSection() {
   return (
     <>
-      <section id="referencias" className="relative border-t border-border/60 py-24 md:py-32">
+      <section id="referencias" className="relative border-t border-border/60 py-12 md:py-16">
         <div className="mx-auto w-full max-w-6xl px-6">
           <SectionHeader
             eyebrow="Cartografía de referencia"
@@ -62,7 +62,7 @@ export function FooterSection() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden border-t border-border/60 py-24 md:py-32">
+      <section className="relative overflow-hidden border-t border-border/60 py-12 md:py-16">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute left-1/2 top-1/2 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-40 blur-3xl"
@@ -98,7 +98,7 @@ export function FooterSection() {
       </section>
 
       {/* Baral planet brand closing */}
-      <section className="relative border-t border-border/60 py-24 overflow-hidden">
+      <section className="relative border-t border-border/60 py-10 overflow-hidden">
         {/* Deep space background wash */}
         <div
           aria-hidden="true"
@@ -156,7 +156,7 @@ export function FooterSection() {
                 style={{ background: 'var(--quasar)' }}
               />
               <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
-                Diagnóstico · Master Web Auditor v2.0 · AUDITOR-X
+                Diagnóstico · Master Web Auditor v2.0
               </p>
               <span
                 aria-hidden

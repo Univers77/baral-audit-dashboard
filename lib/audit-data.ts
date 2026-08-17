@@ -448,7 +448,7 @@ export const compactFindings: CompactFinding[] = [
   { id: 'BARAL-TRUST-024', module: 'M15', title: 'Sin politica de privacidad clara y accesible en footer', effort: 'Bajo', priority: 'P3' },
   { id: 'BARAL-SEO-025',        module: 'M02', title: 'Robots.txt no revisado — posibles rutas mal configuradas', effort: 'Bajo', priority: 'P3' },
   { id: 'BARAL-SEO-026',        module: 'M04', title: 'H1 duplicados detectados — multiples H1 en homepage (SEOptimer FAIL)', effort: 'Bajo', priority: 'P2' },
-  { id: 'BARAL-CONTENT-027',    module: 'M06', title: 'Thin content: solo 338 palabras en homepage (benchmark: 500+)', effort: 'Medio', priority: 'P2' },
+  { id: 'BARAL-CONTENT-027',    module: 'M06', title: 'Thin content: 532 palabras en homepage (benchmark recomendado: 800+)', effort: 'Medio', priority: 'P2' },
   { id: 'BARAL-USABILITY-028',  module: 'M15', title: 'Email expuesto en texto plano — riesgo de scraping y spam (SEOptimer FAIL)', effort: 'Bajo', priority: 'P2' },
   { id: 'BARAL-LINKS-029',      module: 'M05', title: 'Domain Strength 5/100, Links grade F — solo 5 backlinks dofollow de 40 totales', effort: 'Alto', priority: 'P1' },
 ]
@@ -466,17 +466,19 @@ export const constellationSets: Record<string, Record<AxisKey, number>> = {
 
 export const compareColumns = [
   { key: 'client', label: 'BARAL', threat: 'Sujeto auditado' },
-  { key: 'a', label: 'COMP A', threat: 'Rival local' },
-  { key: 'b', label: 'COMP B', threat: 'Rival regional' },
-  { key: 'top', label: 'REF TOP', threat: 'Estrella guia' },
+  { key: 'a', label: 'AIGEN', threat: 'aigendigitalmarketing.net' },
+  { key: 'b', label: 'AGC.BLUE', threat: 'bolivia.agencia.blue' },
+  { key: 'top', label: 'BENCHMARK', threat: 'Referencia industria LATAM' },
 ] as const
 
-export const compareRows = [
-  { label: 'Performance score', client: 45, a: 68, b: 75, top: 91, unit: '' },
-  { label: 'SEO score', client: 45, a: 55, b: 62, top: 87, unit: '' },
-  { label: 'Trust signals', client: 2, a: 5, b: 7, top: 9, unit: '/10' },
-  { label: 'CTA clarity', client: 3, a: 6, b: 7, top: 9, unit: '/10' },
-  { label: 'Mobile UX', client: 38, a: 70, b: 78, top: 90, unit: '' },
+// COMP A = aigendigitalmarketing.net, COMP B = bolivia.agencia.blue
+// a/b = null → no medido (requiere auditoría real de cada competidor)
+export const compareRows: { label: string; client: number; a: number | null; b: number | null; top: number; unit: string }[] = [
+  { label: 'Performance score', client: 45, a: null, b: null, top: 91, unit: '' },
+  { label: 'SEO score',         client: 45, a: null, b: null, top: 87, unit: '' },
+  { label: 'Trust signals',     client: 2,  a: null, b: null, top: 9,  unit: '/10' },
+  { label: 'CTA clarity',       client: 3,  a: null, b: null, top: 9,  unit: '/10' },
+  { label: 'Mobile UX',         client: 38, a: null, b: null, top: 90, unit: '' },
 ]
 
 export const references = [
@@ -509,12 +511,13 @@ export const references = [
 // counts derived from actual findings — never hardcoded
 const _stageCounts = (key: FunnelKey) => findings.filter((f) => f.stage === key).length
 
+// dropoff = null en todos → requiere datos reales de GA4 (nunca se midió)
 export const funnelStages: { key: FunnelKey; label: string; count: number; dropoff: number | null }[] = [
-  { key: 'discover',    label: 'DISCOVER',    count: _stageCounts('discover'),    dropoff: 28 },
-  { key: 'arrive',      label: 'ARRIVE',      count: _stageCounts('arrive'),      dropoff: 15 },
-  { key: 'understand',  label: 'UNDERSTAND',  count: _stageCounts('understand'),  dropoff: 42 },
-  { key: 'trust',       label: 'TRUST',       count: _stageCounts('trust'),       dropoff: 35 },
-  { key: 'action',      label: 'ACTION',      count: _stageCounts('action'),      dropoff: 55 },
+  { key: 'discover',    label: 'DISCOVER',    count: _stageCounts('discover'),    dropoff: null },
+  { key: 'arrive',      label: 'ARRIVE',      count: _stageCounts('arrive'),      dropoff: null },
+  { key: 'understand',  label: 'UNDERSTAND',  count: _stageCounts('understand'),  dropoff: null },
+  { key: 'trust',       label: 'TRUST',       count: _stageCounts('trust'),       dropoff: null },
+  { key: 'action',      label: 'ACTION',      count: _stageCounts('action'),      dropoff: null },
   { key: 'convert',     label: 'CONVERT',     count: _stageCounts('convert'),     dropoff: null },
 ]
 
@@ -563,27 +566,28 @@ export const roadmap = [
   },
 ]
 
+// confidence = null → estimaciones sin base de datos; requieren GA4 / GSC para validar
 export const hypotheses = [
   {
     text: 'Reparar los contadores animados aumentara el tiempo en homepage en un 20%',
     stage: 'TRUST',
     method: 'Comparacion pre/post con GA4 Engagement Time',
     metric: 'Avg. engagement time',
-    confidence: 82,
+    confidence: null as null,
   },
   {
     text: 'Agregar prueba social verificable aumentara la tasa de contacto en un 25%',
     stage: 'CONVERT',
     method: 'A/B test con variante de testimonios',
     metric: 'Form submission rate',
-    confidence: 74,
+    confidence: null as null,
   },
   {
     text: 'Optimizar titles y meta descriptions aumentara CTR organico en 15-30%',
     stage: 'DISCOVER',
     method: 'Google Search Console — CTR por query',
     metric: 'Organic CTR',
-    confidence: 88,
+    confidence: null as null,
   },
 ]
 

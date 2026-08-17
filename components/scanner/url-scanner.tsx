@@ -158,7 +158,7 @@ export function UrlScanner({ onResult }: { onResult?: (r: AuditResult) => void }
             style={{ border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}
           >
             <Globe size={11} />
-            ESCÁNER DE SITIOS WEB · AUDITOR-X
+            ESCÁNER DE SITIOS WEB
           </div>
           <h2 className="font-display mb-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
             Analiza cualquier URL
@@ -416,7 +416,7 @@ export function UrlScanner({ onResult }: { onResult?: (r: AuditResult) => void }
                   <div className="flex items-center gap-2">
                     <Sparkles size={13} style={{ color: '#00d4ff' }} />
                     <span className="font-mono text-[11px] tracking-widest" style={{ color: '#00d4ff' }}>
-                      ANÁLISIS INTELIGENTE · AUDITOR-X
+                      ANÁLISIS INTELIGENTE · Claude AI
                     </span>
                   </div>
                   {result.claudeEnrichment.dataConfidence && (

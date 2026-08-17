@@ -19,8 +19,8 @@ const MAX_R = 138
 
 const SERIES = [
   { key: 'client', label: 'Tu sitio', color: 'var(--quasar)', fill: 'oklch(0.8 0.16 305 / 0.16)', dash: '' },
-  { key: 'avg', label: 'Competidor promedio', color: 'var(--star)', fill: 'oklch(0.88 0.14 195 / 0.08)', dash: '5 4' },
-  { key: 'top', label: 'Referencia top', color: 'var(--nova)', fill: 'oklch(0.86 0.19 155 / 0.06)', dash: '2 6' },
+  { key: 'avg', label: 'Benchmark estimado', color: 'var(--star)', fill: 'oklch(0.88 0.14 195 / 0.08)', dash: '5 4' },
+  { key: 'top', label: 'Referencia aspiracional', color: 'var(--nova)', fill: 'oklch(0.86 0.19 155 / 0.06)', dash: '2 6' },
 ] as const
 
 function polar(r: number, angleDeg: number) {
@@ -45,7 +45,7 @@ export function CompetitiveSection() {
   const avg = constellationSets.avg
 
   return (
-    <section id="competencia" className="relative px-5 py-24 sm:px-8 sm:py-28">
+    <section id="competencia" className="relative px-5 py-14 sm:px-8 sm:py-18">
       <div className="mx-auto max-w-6xl">
         <Reveal>
           <SectionHeader
@@ -55,12 +55,12 @@ export function CompetitiveSection() {
                 Tu posición frente a los cuerpos <span className="text-gradient-quasar">más cercanos y peligrosos</span>
               </>
             }
-            description="Activado por micro-agentes competitive-auditor + reference DNA. Nada se subestima: cada eje se contrasta contra el rival directo, el rival peligroso y la estrella guía del sector."
+            description="Selección editorial de referencias del mercado digital boliviano. Los ejes del radar son benchmarks estimados de la industria — cada competidor requiere auditoría propia para obtener datos medidos."
           />
         </Reveal>
 
         {/* Radar */}
-        <div className="mt-12 grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)]">
+        <div className="mt-8 grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)]">
           <Reveal delay={80}>
             <div
               className="glass relative rounded-3xl p-4"
@@ -223,7 +223,7 @@ export function CompetitiveSection() {
         </div>
 
         {/* Benchmark table */}
-        <Reveal delay={80} className="mt-16 block">
+        <Reveal delay={80} className="mt-10 block">
           <div
             className="glass overflow-hidden rounded-3xl"
             style={{ border: '1px solid var(--border)' }}
@@ -232,6 +232,9 @@ export function CompetitiveSection() {
               <table className="w-full min-w-[640px] border-collapse text-left">
                 <caption className="text-muted-foreground/70 border-border/70 border-b px-5 py-4 text-left font-mono text-[11px] tracking-[0.16em]">
                   BENCHMARKS DIRECTOS · LÍDER / GAP POR MÉTRICA
+                  <span className="ml-3 font-mono text-[9px] tracking-normal normal-case" style={{ color: 'oklch(0.85 0.13 88 / 0.7)' }}>
+                    · N/M = competidor no auditado · ✱ REL = relevancia editorial estimada
+                  </span>
                 </caption>
                 <thead>
                   <tr className="border-border/70 border-b">
@@ -259,14 +262,23 @@ export function CompetitiveSection() {
                 <tbody>
                   {compareRows.map((row) => {
                     const values = [row.client, row.a, row.b, row.top]
-                    const max = Math.max(...values)
-                    const min = Math.min(...values)
+                    const numeric = values.filter((v): v is number => v !== null)
+                    const max = numeric.length ? Math.max(...numeric) : 0
+                    const min = numeric.length ? Math.min(...numeric) : 0
                     return (
                       <tr key={row.label} className="border-border/50 hover:bg-foreground/[0.03] border-b transition-colors">
                         <th scope="row" className="text-muted-foreground px-5 py-4 text-[13.5px] font-medium">
                           {row.label}
                         </th>
                         {values.map((v, i) => {
+                          if (v === null) {
+                            return (
+                              <td key={i} className="px-4 py-4 text-center align-middle">
+                                <span className="font-mono text-[12px] font-bold" style={{ color: 'var(--muted-foreground)' }}>N/M</span>
+                                <span className="mt-1 block font-mono text-[9px]" style={{ color: 'oklch(0.72 0.03 272 / 0.5)' }}>no medido</span>
+                              </td>
+                            )
+                          }
                           const isLeader = v === max
                           const isGap = v === min
                           const badgeColor = isLeader ? 'var(--nova)' : 'var(--pulsar)'
@@ -316,12 +328,15 @@ export function CompetitiveSection() {
         </Reveal>
 
         {/* Reference DNA */}
-        <div className="mt-16">
+        <div className="mt-10">
           <Reveal>
             <div className="text-muted-foreground/60 mb-5 font-mono text-[11px] tracking-[0.18em]">
               REFERENCE DNA · CUERPOS EN TU CAMPO GRAVITATORIO
             </div>
           </Reveal>
+          <p className="text-muted-foreground/50 mb-5 font-mono text-[10px]">
+            ✱ Relevancia editorial (0–100): estimación cualitativa basada en presencia web, SEO visible y actividad de contenido. No es un índice medido — los datos verificables de cada competidor requieren auditoría propia.
+          </p>
           <div className="grid gap-4 md:grid-cols-3">
             {references.map((r, i) => (
               <Reveal key={r.domain} delay={i * 110}>
@@ -343,7 +358,7 @@ export function CompetitiveSection() {
 
                   <div className="mt-4 flex items-center justify-between">
                     <span className="text-accent font-mono text-[10px] tracking-[0.12em]">{r.orbit.toUpperCase()}</span>
-                    <span className="text-muted-foreground/60 font-mono text-[10px]">GRAV {r.gravity}</span>
+                    <span className="text-muted-foreground/60 font-mono text-[10px]" title="Relevancia editorial estimada — no es un índice medido">REL {r.gravity}/100 ✱</span>
                   </div>
                   <div className="mt-2 h-1 overflow-hidden rounded-full" style={{ background: 'oklch(1 0 0 / 0.07)' }}>
                     <div
