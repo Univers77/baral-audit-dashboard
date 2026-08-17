@@ -2,6 +2,12 @@
 
 import { useEffect, useRef } from 'react'
 
+/**
+ * Bottom-anchored planet horizon accent — a thin cropped band from the
+ * Baral planet video (bg-baral-horizon.mp4, pre-cropped server-side to
+ * exclude the logo wordmark) that grounds the page visually without
+ * competing with content. Sits above Starfield, below page content.
+ */
 export function VideoBackground() {
   const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -11,54 +17,30 @@ export function VideoBackground() {
   }, [])
 
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      {/* Video base */}
+    <div aria-hidden className="pointer-events-none fixed inset-x-0 bottom-0 -z-10 h-[34vh] min-h-[220px] max-h-[420px] overflow-hidden">
       <video
         ref={videoRef}
-        src="/bg-baral.mp4"
+        src="/bg-baral-horizon.mp4"
         autoPlay
         loop
         muted
         playsInline
-        className="absolute inset-0 h-full w-full object-cover"
-        style={{ objectPosition: 'center center' }}
+        className="absolute inset-x-0 bottom-0 h-full w-full object-cover"
+        style={{ objectPosition: 'center bottom' }}
       />
 
-      {/* Dark veil — keeps text legible over the bright video */}
-      <div
-        className="absolute inset-0"
-        style={{ background: 'rgba(6, 4, 20, 0.60)' }}
-      />
-
-      {/* Purple nebula top — maintains brand identity */}
+      {/* Fade the horizon band into the starfield above it */}
       <div
         className="absolute inset-0"
         style={{
-          background:
-            'radial-gradient(ellipse 110% 55% at 50% -5%, oklch(0.62 0.24 300 / 0.22), transparent 55%), ' +
-            'radial-gradient(ellipse 80% 50% at 50% 105%, oklch(0.7 0.16 205 / 0.12), transparent 55%)',
+          background: 'linear-gradient(to bottom, rgba(4,2,14,1) 0%, rgba(4,2,14,0.55) 28%, rgba(4,2,14,0.05) 62%, transparent 100%)',
         }}
       />
-
-      {/* Vignette edges so content doesn't compete with video corners */}
+      {/* Purple ground glow matching the accent color used across the page */}
       <div
-        className="absolute inset-0"
+        className="absolute inset-x-0 bottom-0 h-1/2"
         style={{
-          background:
-            'radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, rgba(4,2,18,0.70) 100%)',
-        }}
-      />
-
-      {/* Subtle celestial grid — very faint */}
-      <div
-        className="absolute inset-0 opacity-[0.035]"
-        style={{
-          backgroundImage:
-            'linear-gradient(to right, oklch(0.9 0.02 280) 1px, transparent 1px), ' +
-            'linear-gradient(to bottom, oklch(0.9 0.02 280) 1px, transparent 1px)',
-          backgroundSize: '72px 72px',
-          maskImage:
-            'radial-gradient(ellipse 65% 55% at 50% 35%, black, transparent 72%)',
+          background: 'radial-gradient(ellipse 70% 100% at 50% 100%, oklch(0.62 0.24 300 / 0.22), transparent 70%)',
         }}
       />
     </div>

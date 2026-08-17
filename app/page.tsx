@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useCallback, useEffect, useState } from 'react'
 
+import { Starfield } from '@/components/cosmos/starfield'
 import { VideoBackground } from '@/components/cosmos/video-background'
 import { SiteNav } from '@/components/audit/site-nav'
 import { Hero } from '@/components/audit/hero'
@@ -15,6 +16,7 @@ import { TrajectorySection } from '@/components/audit/trajectory-section'
 import { RoadmapSection } from '@/components/audit/roadmap-section'
 import { FooterSection } from '@/components/audit/footer-section'
 import { ExportSection } from '@/components/audit/export-section'
+import { ExecutiveReport } from '@/components/audit/executive-report'
 import { UrlScanner } from '@/components/scanner/url-scanner'
 import type { Priority } from '@/lib/audit-data'
 import type { AuditResult } from '@/lib/scanner/types'
@@ -57,32 +59,38 @@ export default function Page() {
 
   return (
     <div className="relative min-h-screen overflow-x-clip">
-      <VideoBackground />
+      <div className="print:hidden">
+        <Starfield />
+        <VideoBackground />
 
-      <SiteNav />
+        <SiteNav />
 
-      <main>
-        <UrlScanner onResult={handleResult} />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none my-2 h-px mx-auto max-w-5xl"
-          style={{ background: 'linear-gradient(90deg,transparent,var(--border),transparent)' }}
-        />
-        <Hero scanResult={scanResult} ga4Data={ga4Data} />
-        <ConstellationMap scanResult={scanResult} onFilter={setFilter} onFocusFinding={focusFinding} />
-        <FindingsSection scanResult={scanResult} filter={filter} setFilter={setFilter} focusId={focusId} />
-        <MetricsSection scanResult={scanResult} />
-        <CompetitiveSection />
-        <TrajectorySection
-          scanResult={scanResult}
-          onFocusFinding={focusFinding}
-          onGA4Data={handleGA4Data}
-          ga4Data={ga4Data}
-        />
-        <RoadmapSection scanResult={scanResult} onFocusFinding={focusFinding} />
-        <ExportSection scanResult={scanResult} ga4Data={ga4Data} />
-        <FooterSection scanResult={scanResult} ga4Data={ga4Data} />
-      </main>
+        <main>
+          <UrlScanner onResult={handleResult} />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none my-2 h-px mx-auto max-w-5xl"
+            style={{ background: 'linear-gradient(90deg,transparent,var(--border),transparent)' }}
+          />
+          <Hero scanResult={scanResult} ga4Data={ga4Data} />
+          <ConstellationMap scanResult={scanResult} onFilter={setFilter} onFocusFinding={focusFinding} />
+          <FindingsSection scanResult={scanResult} filter={filter} setFilter={setFilter} focusId={focusId} />
+          <MetricsSection scanResult={scanResult} />
+          <CompetitiveSection />
+          <TrajectorySection
+            scanResult={scanResult}
+            onFocusFinding={focusFinding}
+            onGA4Data={handleGA4Data}
+            ga4Data={ga4Data}
+          />
+          <RoadmapSection scanResult={scanResult} onFocusFinding={focusFinding} />
+          <ExportSection scanResult={scanResult} ga4Data={ga4Data} />
+          <FooterSection scanResult={scanResult} ga4Data={ga4Data} />
+        </main>
+      </div>
+
+      {/* Documento imprimible — oculto en pantalla, visible solo en window.print() */}
+      <ExecutiveReport scanResult={scanResult} ga4Data={ga4Data} />
     </div>
   )
 }
