@@ -30,7 +30,6 @@ export function ExportSection({
           domain: scanResult!.domain,
           scanDate: scanResult!.scanDate,
           scores: scanResult!.scores,
-          grade: scanResult!.grade,
           findings: scanResult!.findings,
           compactFindings: scanResult!.compactFindings,
           tech: scanResult!.tech,
@@ -154,7 +153,7 @@ export function ExportSection({
 
               {/* Footer note */}
               <p className="mt-6 text-center font-mono text-[10px] text-muted-foreground/40 leading-relaxed">
-                PDF incluye todas las secciones del dashboard · JSON incluye datos estructurados + hallazgos + scores{ga4Data ? ' + métricas GA4' : ''}
+                PDF genera un documento ejecutivo con portada, resumen, hallazgos P0–P3 con evidencia y dirección de solución, y próximos pasos · JSON incluye datos estructurados + hallazgos + scores{ga4Data ? ' + métricas GA4' : ''}
               </p>
             </div>
 
