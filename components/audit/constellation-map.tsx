@@ -312,7 +312,9 @@ export function ConstellationMap({
                               {n.priority} · {n.id} · Esfuerzo {n.effort}
                             </text>
                             <foreignObject x={tipX + 8} y={tipY + 22} width={tipW - 16} height={tipH - 26}>
-                              <div xmlns="http://www.w3.org/1999/xhtml"
+                              {/* Sin xmlns: React ya asigna el namespace correcto
+                                  a los hijos de foreignObject. */}
+                              <div
                                 style={{ fontSize: '10.5px', color: 'rgba(255,255,255,0.85)', lineHeight: '1.4',
                                   overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                                 {n.title}
@@ -320,7 +322,7 @@ export function ConstellationMap({
                             </foreignObject>
                             {n.impactBusiness && (
                               <foreignObject x={tipX + 8} y={tipY + 44} width={tipW - 16} height={22}>
-                                <div xmlns="http://www.w3.org/1999/xhtml"
+                                <div
                                   style={{ fontSize: '9.5px', color: 'rgba(255,255,255,0.45)', lineHeight: '1.3',
                                     overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>
                                   {n.impactBusiness}

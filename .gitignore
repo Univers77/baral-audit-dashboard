@@ -14,3 +14,8 @@ node_modules
 .next/
 .DS_Store
 .vercel
+
+# Resultados de escaneos y bitácora de diagnóstico: datos de ejecución,
+# se regeneran solos y no deben viajar en el repositorio.
+cache/
+tsconfig.tsbuildinfo

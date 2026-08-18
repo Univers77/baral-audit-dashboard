@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const GA4_API = 'https://analyticsdata.googleapis.com/v1beta/properties'
+const GA4_TIMEOUT_MS = 20_000
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,6 +9,14 @@ export async function POST(req: NextRequest) {
 
     if (!accessToken || !propertyId) {
       return NextResponse.json({ error: 'accessToken y propertyId son requeridos' }, { status: 400 })
+    }
+    // El propertyId se interpola en la URL: aceptar solo dígitos evita que un
+    // valor con `/` o `:` altere la ruta del recurso solicitado.
+    if (!/^\d{6,20}$/.test(String(propertyId))) {
+      return NextResponse.json(
+        { error: 'El ID de propiedad debe ser numérico (por ejemplo, 123456789)' },
+        { status: 400 },
+      )
     }
 
     const dateRange = { startDate: '30daysAgo', endDate: 'today' }
@@ -85,9 +94,34 @@ export async function POST(req: NextRequest) {
       dateRange,
       propertyId,
     })
-  } catch (err: any) {
+  } catch (err: unknown) {
+    // El detalle crudo se queda en el log; al cliente va un mensaje accionable
+    // que nunca incluye el token ni rutas internas.
     console.error('[GA4 route]', err)
-    return NextResponse.json({ error: err.message ?? 'Error al consultar GA4' }, { status: 500 })
+
+    const msg = err instanceof Error ? err.message : ''
+    if (/timeout|aborted/i.test(msg)) {
+      return NextResponse.json(
+        { error: 'Google Analytics tardó demasiado en responder. Vuelva a intentarlo.', code: 'GA4_TIMEOUT' },
+        { status: 504 },
+      )
+    }
+    if (/\b401\b|unauthenticated|invalid credentials/i.test(msg)) {
+      return NextResponse.json(
+        { error: 'La sesión de Google expiró. Vuelva a conectar la cuenta.', code: 'GA4_AUTH' },
+        { status: 401 },
+      )
+    }
+    if (/\b403\b|permission/i.test(msg)) {
+      return NextResponse.json(
+        { error: 'La cuenta conectada no tiene acceso a esa propiedad de Analytics.', code: 'GA4_FORBIDDEN' },
+        { status: 403 },
+      )
+    }
+    return NextResponse.json(
+      { error: 'No se pudieron obtener los datos de Google Analytics.', code: 'GA4_ERROR' },
+      { status: 502 },
+    )
   }
 }
 
@@ -96,6 +130,9 @@ async function fetchReport(accessToken: string, propertyId: string, body: object
     method: 'POST',
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+    // Sin timeout, una consulta colgada mantenía viva la función hasta el
+    // límite de la plataforma y bloqueaba las otras tres en el Promise.all.
+    signal: AbortSignal.timeout(GA4_TIMEOUT_MS),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))

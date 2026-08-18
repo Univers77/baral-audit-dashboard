@@ -1,4 +1,6 @@
 import * as cheerio from 'cheerio'
+import { safeFetchOk, safeFetchText, UnsafeUrlError } from '@/lib/security/safe-remote-fetch'
+import { classifyLink, isCapturablePage } from './links'
 import type { RawScan, ScanError, DeviceShots } from './types'
 
 const UA = 'Mozilla/5.0 (compatible; MasterWebAuditor/2.0; +https://baralintegral.com)'
@@ -125,26 +127,35 @@ function domain(url: string): string {
 }
 
 export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError> {
-  const url = normalizeUrl(rawUrl)
-  const dom = domain(url)
+  const requestedUrl = normalizeUrl(rawUrl)
   const fetchedAt = new Date().toISOString()
 
   // ── Fetch with timing ──────────────────────────────────────
+  // Todo el tráfico saliente pasa por el gateway: valida el destino, bloquea
+  // redes privadas y revalida cada redirect. Ver lib/security/safe-remote-fetch.
   const t0 = Date.now()
-  let res: Response
+  let res: Awaited<ReturnType<typeof safeFetchText>>
   try {
-    res = await fetch(url, {
+    res = await safeFetchText(requestedUrl, {
       headers: { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml' },
-      redirect: 'follow',
-      signal: AbortSignal.timeout(15_000),
+      timeoutMs: 15_000,
     })
   } catch (err: unknown) {
+    if (err instanceof UnsafeUrlError) {
+      return { url: requestedUrl, error: err.message }
+    }
     const msg = err instanceof Error ? err.message : String(err)
-    return { url, error: `Fetch failed: ${msg}` }
+    return { url: requestedUrl, error: `Fetch failed: ${msg}` }
   }
   const ttfb = Date.now() - t0
 
-  const htmlRaw = await res.text().catch(() => '')
+  // La auditoría describe la página que realmente se sirvió, no la que se pidió.
+  // Con http://ejemplo.com → 301 → https://www.ejemplo.com, evaluar la URL
+  // original marcaría isHttps=false y clasificaría mal los enlaces internos.
+  const url = res.url || requestedUrl
+  const dom = domain(url)
+
+  const htmlRaw = res.bodyText
   const totalTime = Date.now() - t0
   const contentLength = htmlRaw.length
 
@@ -222,26 +233,25 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
   const allLinks = $('a[href]')
   let internalLinks = 0, externalLinks = 0, externalNofollow = 0
   const internalSet = new Set<string>()
+  const pageOrigin = new URL(url).origin
   allLinks.each((_, el) => {
     const href = $(el).attr('href') ?? ''
     const rel = ($(el).attr('rel') ?? '').toLowerCase()
-    const isExternal = /^https?:\/\//i.test(href) && !href.includes(dom)
-    if (isExternal) {
+
+    const link = classifyLink(href, url, dom)
+    if (link.kind === 'ignored') return
+
+    if (link.kind === 'external') {
       externalLinks++
       if (rel.includes('nofollow')) externalNofollow++
-    } else if (href.startsWith('/') || href.includes(dom)) {
-      internalLinks++
-      // Se guardan las rutas internas reales para poder capturar páginas
-      // distintas y no repetir tres veces la portada.
-      try {
-        const abs = new URL(href, url)
-        if (abs.hostname.replace(/^www\./, '') !== dom) return
-        const clean = abs.origin + abs.pathname.replace(/\/$/, '')
-        if (clean === new URL(url).origin) return          // la portada ya se captura aparte
-        if (/\.(pdf|jpe?g|png|gif|svg|zip|docx?|xlsx?)$/i.test(abs.pathname)) return
-        if (abs.pathname.split('/').filter(Boolean).length > 2) return  // evita rutas muy profundas
-        internalSet.add(clean)
-      } catch {}
+      return
+    }
+
+    internalLinks++
+    // Se guardan las rutas internas reales para poder capturar páginas
+    // distintas y no repetir tres veces la portada.
+    if (link.absolute && link.clean && isCapturablePage(link.absolute, pageOrigin)) {
+      internalSet.add(link.clean)
     }
   })
   const internalUrls = [...internalSet].slice(0, 12)
@@ -254,14 +264,12 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
   const wordCount = bodyText.split(' ').filter(w => w.length > 2).length
 
   // External checks (robots.txt + sitemap + llms.txt para crawlers de IA)
-  const baseUrl = new URL(url).origin
+  // Solo se comprueba existencia HTTP, no la validez del contenido.
+  const baseUrl = pageOrigin
   const [robotsTxtExists, sitemapExists, llmsTxtExists] = await Promise.all([
-    fetch(`${baseUrl}/robots.txt`, { signal: AbortSignal.timeout(5_000) })
-      .then(r => r.ok).catch(() => false),
-    fetch(`${baseUrl}/sitemap.xml`, { signal: AbortSignal.timeout(5_000) })
-      .then(r => r.ok).catch(() => false),
-    fetch(`${baseUrl}/llms.txt`, { signal: AbortSignal.timeout(5_000) })
-      .then(r => r.ok).catch(() => false),
+    safeFetchOk(`${baseUrl}/robots.txt`, { timeoutMs: 5_000 }),
+    safeFetchOk(`${baseUrl}/sitemap.xml`, { timeoutMs: 5_000 }),
+    safeFetchOk(`${baseUrl}/llms.txt`, { timeoutMs: 5_000 }),
   ])
 
   return {
@@ -271,7 +279,7 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
     ttfb,
     totalTime,
     statusCode: res.status,
-    isHttps: url.startsWith('https'),
+    isHttps: new URL(url).protocol === 'https:',
     headers,
     contentLength,
     title,

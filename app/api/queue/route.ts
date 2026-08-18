@@ -1,55 +1,34 @@
-import { NextRequest, NextResponse } from 'next/server'
-import fs from 'fs'
-import path from 'path'
+import { NextResponse } from 'next/server'
 
-const QUEUE_FILE = 'D:/GGLabs/audit-queue/pending.json'
-const CACHE_DIR  = 'D:/GGLabs/baral-audit-dashboard/cache'
+export const dynamic = 'force-dynamic'
 
-export async function POST(req: NextRequest) {
-  const { url } = await req.json()
-  if (!url || typeof url !== 'string') {
-    return NextResponse.json({ error: 'URL requerida' }, { status: 400 })
-  }
+/**
+ * Endpoint deshabilitado.
+ *
+ * La implementación anterior mantenía una cola en `D:/GGLabs/audit-queue/pending.json`:
+ *
+ *  · Ruta absoluta de Windows — inexistente en Vercel, fallaba en producción.
+ *  · Ciclo read → parse → push → write sin bloqueo: dos peticiones simultáneas
+ *    se pisaban y se perdían trabajos.
+ *  · GET sin `domain` devolvía la cola completa, sin autenticación: exponía qué
+ *    dominios se estaban auditando y cuándo.
+ *
+ * No tenía consumidores en la aplicación. Se deja el endpoint respondiendo 501
+ * en lugar de eliminarlo para que cualquier cliente externo que aún lo invoque
+ * reciba una respuesta explícita en vez de un error de filesystem.
+ *
+ * Si vuelve a hacer falta una cola, debe apoyarse en almacenamiento durable y
+ * compartido (no en el filesystem de la función) y exigir autenticación.
+ */
+const DISABLED = {
+  error: 'Endpoint deshabilitado',
+  detail: 'La cola basada en archivos no es compatible con el entorno serverless y fue retirada.',
+} as const
 
-  const domain = url.replace(/^https?:\/\//, '').replace(/\/$/, '').split('/')[0]
-  const timestamp = new Date().toISOString()
-
-  // Read current queue
-  let queue: { pending: { id: string; url: string; domain: string; ts: string; status: string }[]; lastUpdated: string | null } = { pending: [], lastUpdated: null }
-  try {
-    queue = JSON.parse(fs.readFileSync(QUEUE_FILE, 'utf-8'))
-  } catch {}
-
-  const id = `audit-${Date.now()}`
-
-  // Add to queue
-  queue.pending.push({ id, url, domain, ts: timestamp, status: 'pending' })
-  queue.lastUpdated = timestamp
-  fs.writeFileSync(QUEUE_FILE, JSON.stringify(queue, null, 2))
-
-  return NextResponse.json({ id, domain, status: 'queued', message: 'Análisis en cola — Claude Code procesando...' })
+export async function GET() {
+  return NextResponse.json(DISABLED, { status: 501 })
 }
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const domain = searchParams.get('domain')
-
-  if (!domain) {
-    // Return full queue state
-    try {
-      const queue = JSON.parse(fs.readFileSync(QUEUE_FILE, 'utf-8'))
-      return NextResponse.json(queue)
-    } catch {
-      return NextResponse.json({ pending: [], lastUpdated: null })
-    }
-  }
-
-  // Check if result exists for this domain
-  const resultPath = path.join(CACHE_DIR, `${domain}.json`)
-  if (fs.existsSync(resultPath)) {
-    const result = JSON.parse(fs.readFileSync(resultPath, 'utf-8'))
-    return NextResponse.json({ status: 'ready', data: result })
-  }
-
-  return NextResponse.json({ status: 'pending' })
+export async function POST() {
+  return NextResponse.json(DISABLED, { status: 501 })
 }

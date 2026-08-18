@@ -1,18 +1,45 @@
 import fs from 'fs'
 import path from 'path'
+import type { ErrorCode } from '@/lib/observability/log'
+import { CACHE_DIR, EVENTS_FILE, OBSIDIAN_DIR } from './paths'
 import type { AuditResult } from './types'
-
-// En Vercel (Linux) usamos /tmp. En local Windows usamos D: drive.
-const IS_VERCEL = process.platform !== 'win32' || !!process.env.VERCEL
-const CACHE_DIR = IS_VERCEL
-  ? '/tmp/audit-cache'
-  : 'D:/GGLabs/baral-audit-dashboard/cache'
-const OBSIDIAN_DIR = IS_VERCEL
-  ? ''
-  : 'D:/GGLabs/00_AI_FACTORY/obsidian-vault/03_PROJECTS/audits'
 
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+}
+
+/** Una línea de la bitácora: qué se intentó auditar y cómo terminó. */
+export interface ScanEvent {
+  ts: string
+  domain: string
+  url: string
+  outcome: 'ok' | 'error'
+  durationMs: number
+  /** presentes solo si outcome === 'ok' */
+  overall?: number
+  findings?: number
+  statusCode?: number
+  /** presentes solo si outcome === 'error' */
+  code?: ErrorCode
+  message?: string
+}
+
+/**
+ * Registra el intento en una bitácora append-only.
+ *
+ * El JSON por dominio guarda únicamente el último escaneo: cada nueva ejecución
+ * sobrescribe la anterior, y los intentos fallidos no dejaban rastro alguno.
+ * Para una herramienta cuyo propósito es detectar fallos y regresiones, ese
+ * era justamente el dato que se perdía. Aquí no se sobrescribe nada.
+ */
+export function recordScanEvent(event: ScanEvent): void {
+  try {
+    ensureDir(CACHE_DIR)
+    fs.appendFileSync(EVENTS_FILE, JSON.stringify(event) + '\n', 'utf-8')
+  } catch {
+    // La bitácora es observabilidad, no parte del resultado: si el disco es de
+    // solo lectura (Vercel), no debe tumbar el escaneo.
+  }
 }
 
 function scoreEmoji(n: number) {

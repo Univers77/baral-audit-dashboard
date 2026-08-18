@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
 import fs from 'fs'
 import path from 'path'
-
-const IS_VERCEL = process.platform !== 'win32' || !!process.env.VERCEL
-const CACHE_DIR = IS_VERCEL ? '/tmp/audit-cache' : 'D:/GGLabs/baral-audit-dashboard/cache'
+import { CACHE_DIR } from '@/lib/scanner/paths'
 
 export const dynamic = 'force-dynamic'
 
