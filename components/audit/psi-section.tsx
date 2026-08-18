@@ -4,7 +4,7 @@ import { Reveal, SectionHeader } from '@/components/cosmos/primitives'
 import { formatCwv } from '@/lib/psi/parse'
 import { isPsiError, type CwvVerdict, type PsiResult, type Strategy } from '@/lib/psi/types'
 import type { AuditResult } from '@/lib/scanner/types'
-import { AlertTriangle, Gauge, Loader2, Monitor, RefreshCw, Smartphone, Users, Zap } from 'lucide-react'
+import { AlertTriangle, Film, Gauge, Loader2, Monitor, RefreshCw, Smartphone, Users, Zap } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 const VERDICT: Record<CwvVerdict, { label: string; color: string; bg: string }> = {
@@ -233,6 +233,43 @@ export function PsiSection({ scanResult }: { scanResult: AuditResult | null }) {
                 </p>
               </div>
             </Reveal>
+
+            {/* Tira de progreso de carga (filmstrip) */}
+            {current.filmstrip.length > 0 && (
+              <Reveal delay={90}>
+                <div className="glass mt-5 rounded-3xl p-6" style={{ border: '1px solid var(--border)' }}>
+                  <p className="flex items-center gap-2 font-mono text-[10px] tracking-[0.16em]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                    <Film className="size-3" aria-hidden />
+                    CÓMO SE VE LA CARGA, FOTOGRAMA A FOTOGRAMA
+                  </p>
+                  <p className="mt-1 mb-4 text-[12.5px] leading-relaxed" style={{ color: 'var(--muted-foreground)' }}>
+                    Cada imagen es lo que un visitante realmente ve en ese instante, no un número abstracto. Si el
+                    sitio tarda en mostrar contenido, se nota en que las primeras miniaturas quedan en blanco.
+                  </p>
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {current.filmstrip.map((f, i) => (
+                      <figure key={i} className="shrink-0" style={{ width: 84 }}>
+                        <div
+                          className="overflow-hidden rounded-lg"
+                          style={{ border: '1px solid var(--border)', background: '#0a0b14', aspectRatio: '9 / 16' }}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={f.data}
+                            alt={`Estado de carga a los ${(f.timing / 1000).toFixed(1)} s`}
+                            className="size-full object-cover object-top"
+                            loading="lazy"
+                          />
+                        </div>
+                        <figcaption className="mt-1 text-center font-mono text-[9px] tabular-nums" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                          {(f.timing / 1000).toFixed(1)}s
+                        </figcaption>
+                      </figure>
+                    ))}
+                  </div>
+                </div>
+              </Reveal>
+            )}
 
             {/* Datos de campo — CrUX */}
             <Reveal delay={110}>

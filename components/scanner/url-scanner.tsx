@@ -178,7 +178,11 @@ export function UrlScanner({ onResult }: { onResult?: (r: AuditResult) => void }
               style={{ color: 'var(--muted-foreground)' }}
             />
             <input
-              type="url"
+              type="text"
+              inputMode="url"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
               value={inputUrl}
               onChange={e => setInputUrl(e.target.value)}
               placeholder="tuempresa.com"

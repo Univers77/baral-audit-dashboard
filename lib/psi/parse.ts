@@ -1,5 +1,5 @@
 import type {
-  CwvMetric, CwvVerdict, FailedAudit, FieldData, LabMetric,
+  CwvMetric, CwvVerdict, FailedAudit, FieldData, FilmstripFrame, LabMetric,
   Opportunity, PsiResult, Strategy,
 } from './types'
 
@@ -168,6 +168,19 @@ function parseFailed(audits: Record<string, any>, categories: Record<string, any
     .slice(0, 14)
 }
 
+/** Lighthouse a veces manda el base64 con el prefijo data:, a veces sin él. */
+function toDataUri(b64: string | undefined | null): string | null {
+  if (!b64) return null
+  return b64.startsWith('data:') ? b64 : `data:image/jpeg;base64,${b64}`
+}
+
+function parseFilmstrip(audits: Record<string, any>): FilmstripFrame[] {
+  const items = audits?.['screenshot-thumbnails']?.details?.items ?? []
+  return items
+    .map((it: any) => ({ timing: Math.round(it.timing ?? 0), data: toDataUri(it.data) }))
+    .filter((f: FilmstripFrame): f is FilmstripFrame => !!f.data)
+}
+
 export function parsePsi(raw: any, strategy: Strategy): PsiResult {
   const lr = raw.lighthouseResult ?? {}
   const audits: Record<string, any> = lr.audits ?? {}
@@ -192,6 +205,8 @@ export function parsePsi(raw: any, strategy: Strategy): PsiResult {
     failedAudits: parseFailed(audits, cats),
     totalBytes: Math.round(audits['total-byte-weight']?.numericValue ?? 0),
     warnings: lr.runWarnings ?? [],
+    filmstrip: parseFilmstrip(audits),
+    finalScreenshot: toDataUri(audits['final-screenshot']?.details?.data),
   }
 }
 

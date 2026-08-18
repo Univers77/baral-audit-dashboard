@@ -2,6 +2,7 @@
 
 import { CosmicButton, Reveal, SectionHeader, TiltCard } from '@/components/cosmos/primitives'
 import { dataGaps } from '@/lib/audit-data'
+import { usePdfDownload } from '@/lib/pdf/generate'
 import type { AuditResult } from '@/lib/scanner/types'
 import { useMemo, useState } from 'react'
 
@@ -69,6 +70,7 @@ export function RoadmapSection({
 }) {
   const [done, setDone] = useState<Record<string, boolean>>({})
   const [openGap, setOpenGap] = useState<string | null>('g1')
+  const { pdfState, downloadPdf } = usePdfDownload(scanResult?.domain)
 
   const roadmap = useMemo(() => scanResult ? buildRoadmap(scanResult) : [], [scanResult])
   const total = roadmap.reduce((n, p) => n + p.items.length, 0)
@@ -127,7 +129,9 @@ export function RoadmapSection({
                   {completed}/{total}
                 </span>
               </div>
-              <CosmicButton onClick={() => window.print()}>Descargar roadmap</CosmicButton>
+              <CosmicButton onClick={downloadPdf} disabled={!!pdfState}>
+                {pdfState ?? 'Descargar roadmap en PDF'}
+              </CosmicButton>
             </div>
           </Reveal>
 

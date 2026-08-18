@@ -66,6 +66,14 @@ export interface FailedAudit {
   category: string
 }
 
+/** Fotograma de la tira de progreso de carga (filmstrip) que genera Lighthouse. */
+export interface FilmstripFrame {
+  /** milisegundos desde el inicio de la navegación */
+  timing: number
+  /** data URI (image/jpeg;base64) lista para usar en <img src> */
+  data: string
+}
+
 export interface PsiCategoryScores {
   performance: number | null
   accessibility: number | null
@@ -87,6 +95,10 @@ export interface PsiResult {
   /** peso total transferido, en bytes */
   totalBytes: number
   warnings: string[]
+  /** tira de miniaturas del progreso de carga, en orden cronológico */
+  filmstrip: FilmstripFrame[]
+  /** captura final de la página ya cargada, si Lighthouse la generó */
+  finalScreenshot: string | null
 }
 
 export interface PsiError {

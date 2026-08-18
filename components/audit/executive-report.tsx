@@ -64,7 +64,7 @@ export function ExecutiveReport({ scanResult, ga4Data }: { scanResult: AuditResu
   const p3 = r.compactFindings.filter(f => f.priority === 'P3')
 
   return (
-    <div className="hidden print:block" style={{ color: INK, background: '#ffffff', fontFamily: 'system-ui, -apple-system, Arial, sans-serif' }}>
+    <div id="executive-report-root" className="hidden print:block" style={{ color: INK, background: '#ffffff', fontFamily: 'system-ui, -apple-system, Arial, sans-serif' }}>
 
       {/* ── COVER ── */}
       <section style={{ breakAfter: 'page', minHeight: '90vh', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '40px 8px' }}>
@@ -107,6 +107,75 @@ export function ExecutiveReport({ scanResult, ga4Data }: { scanResult: AuditResu
         </div>
       </section>
 
+      {/* ── CÓMO LEER ESTE INFORME (lenguaje simple, sin jerga) ── */}
+      <section style={{ breakAfter: 'page', padding: '20px 8px' }}>
+        <PageHeader domain={r.domain} />
+        <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 6px' }}>Cómo leer este informe</h2>
+        <p style={{ fontSize: 12.5, color: MUTED, lineHeight: 1.6, marginBottom: 20 }}>
+          Este documento no requiere conocimientos técnicos. A continuación se explica, en términos simples,
+          qué significa cada número y cada nivel de urgencia.
+        </p>
+
+        <div style={{ marginBottom: 22 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 8px' }}>El puntaje (0 a 100)</h3>
+          <p style={{ fontSize: 11.5, color: '#2a2a3d', lineHeight: 1.6, marginBottom: 10 }}>
+            Es una nota general de qué tan bien está preparado el sitio para atraer, retener y convertir visitantes
+            en clientes. No mide gustos ni diseño: mide condiciones técnicas verificables.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+            {[
+              { range: '80–100', label: 'Bueno', color: '#16a34a', desc: 'Base sólida. Quedan mejoras puntuales.' },
+              { range: '60–79', label: 'Regular', color: '#ca8a04', desc: 'Funciona, pero pierde oportunidades.' },
+              { range: '40–59', label: 'Bajo', color: '#ea580c', desc: 'Problemas que afectan resultados.' },
+              { range: '0–39', label: 'Crítico', color: '#dc2626', desc: 'Requiere atención inmediata.' },
+            ].map(s => (
+              <div key={s.label} style={{ border: `1px solid ${BORDER}`, borderRadius: 8, padding: 10 }}>
+                <p style={{ fontSize: 13, fontWeight: 800, color: s.color, margin: 0 }}>{s.range}</p>
+                <p style={{ fontSize: 10.5, fontWeight: 700, margin: '2px 0 4px' }}>{s.label}</p>
+                <p style={{ fontSize: 9.5, color: MUTED, margin: 0, lineHeight: 1.4 }}>{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 22 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 8px' }}>Los cuatro pilares que se miden</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+            {[
+              { k: 'SEO', d: 'Qué tan fácil es que Google encuentre el sitio y lo muestre a personas que buscan lo que la empresa ofrece.' },
+              { k: 'Rendimiento', d: 'Qué tan rápido carga el sitio. Cada segundo de espera hace que más visitantes se vayan antes de ver el contenido.' },
+              { k: 'Accesibilidad', d: 'Si personas con alguna discapacidad (visual, motriz) pueden usar el sitio sin barreras. También es un requisito legal en muchos países.' },
+              { k: 'Conversión', d: 'Qué tan bien está preparado el sitio para convertir una visita en un contacto, una llamada o una venta.' },
+            ].map(s => (
+              <div key={s.k} style={{ border: `1px solid ${BORDER}`, borderRadius: 8, padding: 12 }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: PURPLE, margin: '0 0 4px' }}>{s.k}</p>
+                <p style={{ fontSize: 10.5, color: '#2a2a3d', margin: 0, lineHeight: 1.5 }}>{s.d}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h3 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 8px' }}>Los niveles de urgencia (P0 a P3)</h3>
+          <p style={{ fontSize: 11.5, color: '#2a2a3d', lineHeight: 1.6, marginBottom: 10 }}>
+            Cada hallazgo trae una etiqueta que indica qué tan urgente es resolverlo. No todo tiene la misma prioridad.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {[
+              { tag: 'P0', color: '#dc2626', bg: '#fee2e2', d: 'Crítico — hay pérdida activa de tráfico o de clientes en este momento. Se atiende esta semana.' },
+              { tag: 'P1', color: '#c2410c', bg: '#ffedd5', d: 'Importante — oportunidad de alto impacto en resultados. Se planifica en el corto plazo.' },
+              { tag: 'P2', color: '#a16207', bg: '#fefce8', d: 'Moderado — mejora recomendada, sin urgencia inmediata.' },
+              { tag: 'P3', color: MUTED, bg: '#f8f8fb', d: 'Menor — detalle técnico de bajo impacto individual.' },
+            ].map(p => (
+              <div key={p.tag} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', background: p.bg, borderRadius: 6 }}>
+                <span style={{ fontFamily: 'monospace', fontSize: 10, fontWeight: 800, color: p.color, minWidth: 22 }}>{p.tag}</span>
+                <span style={{ fontSize: 10.5, color: '#2a2a3d', lineHeight: 1.4 }}>{p.d}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── EXECUTIVE SUMMARY + SCORES ── */}
       <section style={{ breakAfter: 'page', padding: '20px 8px' }}>
         <PageHeader domain={r.domain} />
@@ -120,40 +189,45 @@ export function ExecutiveReport({ scanResult, ga4Data }: { scanResult: AuditResu
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
           {[
-            { label: 'SEO', v: r.scores.seo },
-            { label: 'Performance', v: r.scores.performance },
-            { label: 'Accesibilidad', v: r.scores.accessibility },
-            { label: 'Conversión', v: r.scores.conversion },
+            { label: 'SEO', sub: 'Visibilidad en Google', v: r.scores.seo },
+            { label: 'Rendimiento', sub: 'Velocidad de carga', v: r.scores.performance },
+            { label: 'Accesibilidad', sub: 'Uso sin barreras', v: r.scores.accessibility },
+            { label: 'Conversión', sub: 'Convertir visitas en clientes', v: r.scores.conversion },
           ].map(s => (
             <div key={s.label} style={{ border: `1px solid ${BORDER}`, borderRadius: 8, padding: 12, textAlign: 'center' }}>
               <p style={{ fontSize: 22, fontWeight: 800, color: scoreColor(s.v), margin: 0 }}>{s.v}</p>
               <p style={{ fontSize: 9, fontFamily: 'monospace', color: MUTED, margin: '4px 0 0', letterSpacing: 0.5 }}>{s.label.toUpperCase()}</p>
+              <p style={{ fontSize: 8.5, color: '#9a9ab0', margin: '2px 0 0' }}>{s.sub}</p>
             </div>
           ))}
         </div>
 
         {r.claudeEnrichment?.topPriority && (
           <div style={{ padding: 12, background: '#fef2f2', borderLeft: '3px solid #dc2626', marginBottom: 12 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', margin: '0 0 4px' }}>PRIORIDAD MÁXIMA</p>
+            <p style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', margin: '0 0 4px' }}>LO MÁS URGENTE</p>
             <p style={{ fontSize: 12, margin: 0, color: INK }}>{r.claudeEnrichment.topPriority}</p>
           </div>
         )}
 
         {r.claudeEnrichment?.quickWins && r.claudeEnrichment.quickWins.length > 0 && (
           <div style={{ padding: 12, background: '#fefce8', borderLeft: '3px solid #ca8a04', marginBottom: 20 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: '#a16207', margin: '0 0 6px' }}>QUICK WINS</p>
+            <p style={{ fontSize: 10, fontWeight: 700, color: '#a16207', margin: '0 0 2px' }}>MEJORAS RÁPIDAS Y DE BAJO COSTO</p>
+            <p style={{ fontSize: 9.5, color: '#a16207', margin: '0 0 6px' }}>Se pueden resolver en poco tiempo y ya generan una diferencia visible.</p>
             <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11.5, color: INK, lineHeight: 1.7 }}>
               {r.claudeEnrichment.quickWins.map((w, i) => <li key={i}>{w}</li>)}
             </ul>
           </div>
         )}
 
-        <h3 style={{ fontSize: 13, fontWeight: 700, margin: '20px 0 10px' }}>Señales técnicas</h3>
+        <h3 style={{ fontSize: 13, fontWeight: 700, margin: '20px 0 4px' }}>Datos técnicos verificados</h3>
+        <p style={{ fontSize: 10.5, color: MUTED, margin: '0 0 10px', lineHeight: 1.5 }}>
+          Mediciones directas del sitio en la fecha de esta auditoría, sin interpretación.
+        </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, fontSize: 11 }}>
           {[
-            ['TTFB', `${r.raw.ttfb}ms`], ['Status HTTP', String(r.raw.statusCode)], ['Palabras', String(r.raw.wordCount)],
-            ['HTTPS', r.raw.isHttps ? 'Sí' : 'No'], ['Robots.txt', r.raw.robotsTxtExists ? 'Sí' : 'No'], ['Sitemap', r.raw.sitemapExists ? 'Sí' : 'No'],
-            ['H1 tags', String(r.raw.h1s.length)], ['Imágenes', String(r.raw.totalImages)], ['Sin alt', String(r.raw.imagesWithoutAlt)],
+            ['Respuesta del servidor', `${r.raw.ttfb}ms`], ['Estado del sitio', String(r.raw.statusCode)], ['Palabras en portada', String(r.raw.wordCount)],
+            ['Conexión segura (HTTPS)', r.raw.isHttps ? 'Sí' : 'No'], ['Guía para buscadores (robots.txt)', r.raw.robotsTxtExists ? 'Sí' : 'No'], ['Mapa del sitio (sitemap)', r.raw.sitemapExists ? 'Sí' : 'No'],
+            ['Títulos principales (H1)', String(r.raw.h1s.length)], ['Total de imágenes', String(r.raw.totalImages)], ['Imágenes sin descripción', String(r.raw.imagesWithoutAlt)],
           ].map(([k, v]) => (
             <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', background: '#f8f8fb', borderRadius: 4 }}>
               <span style={{ color: MUTED }}>{k}</span><span style={{ fontWeight: 600 }}>{v}</span>
@@ -245,13 +319,17 @@ export function ExecutiveReport({ scanResult, ga4Data }: { scanResult: AuditResu
       {(p2.length > 0 || p3.length > 0) && (
         <section style={{ breakAfter: ga4Data ? 'page' : 'auto', padding: '20px 8px' }}>
           <PageHeader domain={r.domain} />
-          <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 14px' }}>Oportunidades adicionales — P2 / P3</h2>
+          <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 4px' }}>Oportunidades adicionales</h2>
+          <p style={{ fontSize: 11, color: MUTED, marginBottom: 16, lineHeight: 1.5 }}>
+            No son urgentes, pero suman: cada una acerca un poco más el sitio a su mejor versión posible.
+            La columna &quot;Esfuerzo&quot; indica cuánto trabajo implica resolverla.
+          </p>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
             <thead>
               <tr style={{ borderBottom: `2px solid ${BORDER}`, textAlign: 'left' }}>
-                <th style={{ padding: '6px 8px' }}>Prioridad</th>
-                <th style={{ padding: '6px 8px' }}>Módulo</th>
-                <th style={{ padding: '6px 8px' }}>Hallazgo</th>
+                <th style={{ padding: '6px 8px' }}>Nivel</th>
+                <th style={{ padding: '6px 8px' }}>Área</th>
+                <th style={{ padding: '6px 8px' }}>Qué se encontró</th>
                 <th style={{ padding: '6px 8px' }}>Esfuerzo</th>
               </tr>
             </thead>

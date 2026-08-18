@@ -1,8 +1,10 @@
 'use client'
 
 import { Reveal } from '@/components/cosmos/primitives'
+import { usePdfDownload } from '@/lib/pdf/generate'
 import type { AuditResult } from '@/lib/scanner/types'
 import type { GA4Metrics } from '@/lib/ga4/types'
+import { Loader2 } from 'lucide-react'
 import { useState } from 'react'
 
 export function ExportSection({
@@ -13,12 +15,9 @@ export function ExportSection({
   ga4Data?: GA4Metrics | null
 }) {
   const [downloading, setDownloading] = useState(false)
+  const { pdfState, downloadPdf } = usePdfDownload(scanResult?.domain)
 
   if (!scanResult) return null
-
-  function handlePDF() {
-    window.print()
-  }
 
   function handleJSON() {
     setDownloading(true)
@@ -120,16 +119,17 @@ export function ExportSection({
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 {/* PDF — main CTA */}
                 <button
-                  onClick={handlePDF}
-                  className="group relative flex items-center gap-3 overflow-hidden rounded-2xl px-8 py-4 font-mono text-[13px] font-bold tracking-wide transition-all"
+                  onClick={downloadPdf}
+                  disabled={!!pdfState}
+                  className="group relative flex items-center gap-3 overflow-hidden rounded-2xl px-8 py-4 font-mono text-[13px] font-bold tracking-wide transition-all disabled:cursor-wait disabled:opacity-80"
                   style={{
                     background: 'linear-gradient(135deg, oklch(0.62 0.24 300), oklch(0.55 0.22 296))',
                     boxShadow: '0 0 40px -8px oklch(0.62 0.24 300 / 0.6), inset 0 1px 0 oklch(1 0 0 / 0.15)',
                     color: 'white',
                   }}
                 >
-                  <PDFIcon />
-                  Descargar PDF completo
+                  {pdfState ? <Loader2 className="size-[18px] shrink-0 animate-spin" aria-hidden /> : <PDFIcon />}
+                  {pdfState ?? 'Descargar PDF completo'}
                   <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
                 </button>
 
@@ -153,7 +153,7 @@ export function ExportSection({
 
               {/* Footer note */}
               <p className="mt-6 text-center font-mono text-[10px] text-muted-foreground/40 leading-relaxed">
-                PDF genera un documento ejecutivo con portada, resumen, hallazgos P0–P3 con evidencia y dirección de solución, y próximos pasos · JSON incluye datos estructurados + hallazgos + scores{ga4Data ? ' + métricas GA4' : ''}
+                PDF descarga directamente un documento ejecutivo con portada, resumen, hallazgos P0–P3 con evidencia y dirección de solución, y próximos pasos, explicado en lenguaje simple · JSON incluye datos estructurados + hallazgos + scores{ga4Data ? ' + métricas GA4' : ''}
               </p>
             </div>
 

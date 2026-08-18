@@ -4,6 +4,7 @@ import { site, totalFindings } from '@/lib/audit-data'
 import { CosmicButton, Reveal, SectionHeader, TiltCard } from '@/components/cosmos/primitives'
 import { BaralPlanet } from '@/components/audit/baral-planet'
 import { BaralLogo } from '@/components/brand/baral-logo'
+import { usePdfDownload } from '@/lib/pdf/generate'
 import type { AuditResult } from '@/lib/scanner/types'
 import type { GA4Metrics } from '@/lib/ga4/types'
 import { getHistory } from '@/lib/history'
@@ -18,6 +19,7 @@ export function FooterSection({
   ga4Data?: GA4Metrics | null
 }) {
   const [history, setHistory] = useState<ScanHistoryEntry[]>([])
+  const { pdfState, downloadPdf } = usePdfDownload(scanResult?.domain)
 
   useEffect(() => {
     setHistory(getHistory())
@@ -64,7 +66,9 @@ export function FooterSection({
               comparar la trayectoria real contra este punto de partida.
             </p>
             <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-              <CosmicButton onClick={() => window.print()}>Descargar PDF</CosmicButton>
+              <CosmicButton onClick={downloadPdf} disabled={!!pdfState}>
+                {pdfState ?? 'Descargar PDF'}
+              </CosmicButton>
               <CosmicButton variant="outline" onClick={downloadJSON}>
                 Exportar JSON{ga4Data ? ' + GA4' : ''}
               </CosmicButton>
