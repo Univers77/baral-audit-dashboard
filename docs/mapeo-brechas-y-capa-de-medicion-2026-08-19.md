@@ -196,6 +196,14 @@ La cuenta de Vercel es **`cosu123`** y su integración con GitHub sigue apuntand
 
 Nota operativa: la subida por CLI falla con `fetch failed` en modo por defecto y funciona con `--archive=tgz`.
 
+### La bitácora no funciona en producción
+
+`/api/events` responde correctamente en producción, pero **siempre devuelve cero eventos**. La causa es estructural: la bitácora se escribe en `/tmp`, y en un entorno serverless cada invocación puede correr en una instancia distinta con su propio sistema de archivos efímero. El escaneo escribe en un `/tmp` que el endpoint de consulta nunca ve.
+
+En local funciona perfectamente, que es donde se diseñó y se verificó. Pero si el objetivo es monitorizar fallos de la herramienta **en uso real**, hace falta almacenamiento externo: Vercel KV, Postgres, o enviar los eventos a un servicio de registro.
+
+Es un requisito pendiente, no un defecto de implementación: el módulo hace lo que debe, el entorno no conserva el archivo.
+
 ### Siguiente ronda
 
 - **Probe de visibilidad en IA (AEO).** Necesita diseño propio: caché por dominio y presupuesto de tokens, porque el resultado no es determinista y encarecería cada escaneo.

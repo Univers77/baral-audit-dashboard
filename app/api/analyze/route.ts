@@ -8,6 +8,14 @@ import type { ScanError } from '@/lib/scanner/types'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
+/**
+ * Un escaneo encadena descarga de la página, ficheros auxiliares, comprobación
+ * de enlaces y la llamada a Claude. En local ronda los 5 s, pero con arranque
+ * en frío se pasa del plazo por defecto del entorno serverless y el flujo SSE
+ * se corta sin resultado. /api/psi ya declaraba el suyo; este no, y era la
+ * pieza que faltaba.
+ */
+export const maxDuration = 60
 
 function send(controller: ReadableStreamDefaultController, event: string, data: unknown) {
   const line = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`

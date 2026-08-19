@@ -23,11 +23,17 @@ export interface LinkCheck {
   reason: string
 }
 
-/** Cuántos enlaces se comprueban como máximo: acota el tiempo del escaneo. */
-export const MAX_LINKS_CHECKED = 20
+/**
+ * Presupuesto de tiempo.
+ *
+ * El escaneo entero corre dentro de una función serverless con plazo acotado,
+ * así que esta comprobación no puede crecer sin límite: 12 enlaces con 6 en
+ * paralelo son 2 tandas, y con 4 s de plazo el peor caso son ~8 s.
+ */
+export const MAX_LINKS_CHECKED = 12
 /** Peticiones simultáneas. */
 const CONCURRENCY = 6
-const TIMEOUT_MS = 6_000
+const TIMEOUT_MS = 4_000
 
 /**
  * Traduce un código de estado a veredicto.
