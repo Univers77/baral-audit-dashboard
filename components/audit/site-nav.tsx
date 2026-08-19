@@ -1,7 +1,6 @@
 'use client'
 
 import { BaralLogo } from '@/components/brand/baral-logo'
-import { site } from '@/lib/audit-data'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 
@@ -110,18 +109,6 @@ export function SiteNav() {
           })}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2.5">
-          <span className="text-muted-foreground/70 hidden font-mono text-[11px] lg:inline">{site.date}</span>
-          <span
-            className="text-accent rounded-full px-2.5 py-1 font-mono text-[10px] tracking-[0.12em] whitespace-nowrap"
-            style={{
-              background: 'oklch(0.88 0.14 195 / 0.08)',
-              border: '1px solid oklch(0.88 0.14 195 / 0.28)',
-            }}
-          >
-            NIVEL 0 · {site.level.toUpperCase()}
-          </span>
-        </div>
       </nav>
 
       <div className="bg-border/60 h-[2px] w-full">
