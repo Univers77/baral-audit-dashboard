@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio'
 import { safeFetchOk, safeFetchText, UnsafeUrlError } from '@/lib/security/safe-remote-fetch'
+import { checkLinks, confirmedBroken, MAX_LINKS_CHECKED, type LinkTarget } from './broken-links'
 import { classifyLink, isCapturablePage } from './links'
 import { parseSitemap } from './sitemap'
 import type { FormStats, SchemaIdentity } from './agent-readiness'
@@ -302,6 +303,11 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
   const allLinks = $('a[href]')
   let internalLinks = 0, externalLinks = 0, externalNofollow = 0
   const internalSet = new Set<string>()
+  // Destinos únicos para la comprobación de enlaces rotos. Se guardan aparte de
+  // internalUrls, que está filtrado para capturas de pantalla y descartaría
+  // justo las rutas profundas donde suelen esconderse los enlaces muertos.
+  const internalTargets = new Set<string>()
+  const externalTargets = new Set<string>()
   const pageOrigin = new URL(url).origin
   allLinks.each((_, el) => {
     const href = $(el).attr('href') ?? ''
@@ -313,8 +319,11 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
     if (link.kind === 'external') {
       externalLinks++
       if (rel.includes('nofollow')) externalNofollow++
+      if (link.absolute) externalTargets.add(link.absolute)
       return
     }
+
+    if (link.absolute) internalTargets.add(link.absolute)
 
     internalLinks++
     // Se guardan las rutas internas reales para poder capturar páginas
@@ -344,6 +353,19 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
     safeFetchOk(`${baseUrl}/.well-known/ai-plugin.json`, { timeoutMs: 5_000 }).catch(() => false),
     safeFetchOk(`${baseUrl}/.well-known/mcp.json`, { timeoutMs: 5_000 }).catch(() => false),
   ])
+
+  // ── Enlaces rotos ──
+  // El campo brokenLinks existía desde el principio y siempre llegaba vacío.
+  // Se comprueba una muestra acotada: se reparte entre internos y externos
+  // porque un enlace interno muerto es más grave, pero los externos son los
+  // que se pudren solos con el tiempo.
+  const half = Math.ceil(MAX_LINKS_CHECKED / 2)
+  const linkTargets: LinkTarget[] = [
+    ...[...internalTargets].slice(0, half).map(u => ({ url: u, kind: 'internal' as const })),
+    ...[...externalTargets].slice(0, MAX_LINKS_CHECKED - Math.min(half, internalTargets.size))
+      .map(u => ({ url: u, kind: 'external' as const })),
+  ]
+  const linkChecks = await checkLinks(linkTargets)
 
   return {
     url,
@@ -391,7 +413,8 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
     hasTwitterCard,
     internalLinks,
     externalLinks,
-    brokenLinks: [],
+    linkChecks,
+    brokenLinks: confirmedBroken(linkChecks).map(c => c.url),
     robotsTxtExists: robotsTxt !== null,
     sitemapExists: sitemapXml !== null,
     robotsTxtContent: robotsTxt === null ? null : robotsTxt.slice(0, 8000),

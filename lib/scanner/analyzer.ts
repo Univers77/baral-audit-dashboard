@@ -456,6 +456,41 @@ export function analyze(raw: RawScan): AuditResult {
     })
   }
 
+  // ── Enlaces rotos ─────────────────────────────────────────
+  // Solo se afirma «roto» cuando el servidor de destino lo confirma. Los
+  // enlaces que no responden se reportan aparte y con otra intensidad: muchos
+  // sitios rechazan peticiones automatizadas y tratarlos como rotos llenaría
+  // el informe de falsos positivos.
+  const broken = raw.linkChecks.filter(c => c.verdict === 'roto')
+  if (broken.length > 0) {
+    const internos = broken.filter(c => c.kind === 'internal')
+    findings.push({
+      id: nextId(`${dom}-LINKS`), module: 'M05', category: 'Enlaces', priority: internos.length > 0 ? 'P1' : 'P2',
+      stage: 'understand',
+      title: `${broken.length} enlace(s) roto(s) confirmado(s)`,
+      what: `De ${raw.linkChecks.length} enlaces comprobados, ${broken.length} devuelven un error confirmado por el servidor de destino${internos.length > 0 ? `, de los cuales ${internos.length} son internos` : ''}.`,
+      impactBusiness: 'Cada enlace muerto es una vía de navegación que termina en nada. Si está en el camino hacia el contacto o la contratación, es una venta que no ocurre.',
+      impactUser: 'La persona encuentra una página de error y suele abandonar el sitio en lugar de volver atrás.',
+      impactTech: 'Los rastreadores gastan presupuesto de rastreo en destinos muertos y los enlaces internos rotos no transmiten autoridad.',
+      evidence: broken.slice(0, 6).map(c => ({ source: `${c.kind === 'internal' ? 'Interno' : 'Externo'} · ${c.status}`, value: c.url })),
+      confidence: 99, severity: internos.length > 0 ? 4 : 3, scope: 1.5, businessImpact: internos.length > 0 ? 2.0 : 1.0,
+      auditxStatus: 'CONFIRMED', effort: 'Bajo',
+      direction: 'Corregir el destino de cada enlace interno roto o retirarlo. Para los externos, sustituir por una fuente vigente.',
+      validate: 'Volver a escanear y comprobar que la lista de enlaces rotos queda vacía.',
+      impact3mo: 'Recorridos de navegación completos y sin callejones sin salida.',
+      impact6mo: 'Mejor distribución de autoridad interna y menos rastreo desperdiciado.',
+    })
+  }
+
+  const sinRespuesta = raw.linkChecks.filter(c => c.verdict === 'sin-respuesta')
+  if (sinRespuesta.length > 0) {
+    compact.push({
+      id: nextId(`${dom}-LINKS`), module: 'M05',
+      title: `${sinRespuesta.length} enlace(s) sin respuesta — revisar a mano: puede ser un servidor caído o un destino que rechaza peticiones automatizadas`,
+      effort: 'Bajo', priority: 'P3',
+    })
+  }
+
   // ── Scoring ───────────────────────────────────────────────
   const p0 = findings.filter(f => f.priority === 'P0').length
   const p1 = findings.filter(f => f.priority === 'P1').length

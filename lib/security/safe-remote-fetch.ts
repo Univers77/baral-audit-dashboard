@@ -284,3 +284,23 @@ export async function safeFetchOk(url: string, opts: SafeFetchOptions = {}): Pro
     return false
   }
 }
+
+/**
+ * Código de estado sin descargar el cuerpo.
+ *
+ * Distinto de safeFetchOk: para reportar un enlace roto no basta saber que
+ * falló, hace falta separar un 404 real de un servidor caído o de un destino
+ * que simplemente no responde a nuestro user-agent.
+ *
+ * `null` significa que no hubo respuesta HTTP: destino bloqueado por el
+ * gateway, DNS que no resuelve, o expiración del plazo.
+ */
+export async function safeFetchStatus(url: string, opts: SafeFetchOptions = {}): Promise<number | null> {
+  try {
+    const res = await fetchFollowingSafely(url, opts)
+    await res.body?.cancel().catch(() => {})
+    return res.status
+  } catch {
+    return null
+  }
+}

@@ -1,3 +1,4 @@
+import type { LinkCheck } from './broken-links'
 import type { HeadingNode } from './headings'
 import type { SitemapInfo } from './sitemap'
 import type { AgentReadiness, FormStats, SchemaIdentity } from './agent-readiness'
@@ -56,6 +57,9 @@ export interface RawScan {
   externalNofollow: number
   /** rutas internas reales halladas, para capturar páginas distintas */
   internalUrls: string[]
+  /** muestra comprobada, con veredicto por enlace */
+  linkChecks: LinkCheck[]
+  /** solo los confirmados por el servidor de destino (404/410/5xx) */
   brokenLinks: string[]
   // Usabilidad / calidad de código
   hreflangCount: number

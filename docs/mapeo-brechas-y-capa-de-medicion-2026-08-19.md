@@ -106,20 +106,41 @@ Con la aplicación del European Accessibility Act ya activa —siete estados mie
 
 Cabeceras de seguridad (OWASP), jerarquía de encabezados (WCAG §1.3.1 y §2.4.6), etiquetas de formulario (WCAG §3.3.2), frescura de contenido vía `sitemap.xml`, y fusión de PageSpeed en el informe entregable.
 
+### 4.4 Enlaces rotos
+
+El campo `brokenLinks` existía en el modelo desde el principio y **siempre llegaba vacío**: nadie lo llenaba. El informe declaraba implícitamente que no había enlaces rotos sin haber comprobado ninguno.
+
+Ahora se comprueba una muestra acotada de 20 enlaces —repartida entre internos y externos— con 6 peticiones simultáneas y 6 segundos de plazo, toda a través de la pasarela SSRF.
+
+El criterio de clasificación es deliberadamente conservador:
+
+| Respuesta | Veredicto | Razón |
+|---|---|---|
+| 200–399 | correcto | — |
+| 404, 410 | **roto** | El servidor confirma que el recurso no existe |
+| 5xx | **roto** | Error del servidor de destino |
+| 401, 403, 429 | restringido | El recurso existe; solo restringe el acceso automatizado |
+| Sin respuesta | sin respuesta | Puede ser un servidor caído o un rechazo de peticiones automatizadas |
+
+Solo se afirma «roto» cuando el servidor lo confirma. Marcar como roto todo lo que no responde es el error más frecuente de estos escáneres, y produce informes que el cliente deja de creer. Los enlaces sin respuesta se reportan aparte, como P3 y con indicación de revisión manual.
+
+Verificado contra `github.com`: 20 enlaces comprobados, 19 correctos y 1 clasificado como restringido —no como roto—, que es exactamente el caso que el guardarraíl existe para evitar. Coste: 5,2 s de escaneo total.
+
 ---
 
 ## 5. Verificación
 
 | Comprobación | Resultado |
 |---|---|
-| `pnpm test` | **158 de 158** (eran 71) |
+| `pnpm test` | **184 de 184** (eran 71) |
 | `pnpm typecheck` | Limpio |
 | Bloqueo de rastreadores en vivo (`theverge.com`) | 7 bloqueados, correctamente identificados |
 | Render en cliente en vivo (`excalidraw.com`) | Diagnosticado como tal, ya no como contenido delgado |
 | Cobertura en pantalla | Accesibilidad 5/56 declarada |
+| Enlaces rotos en vivo (`github.com`) | 20 comprobados; un 4xx restringido correctamente **no** marcado como roto |
 | `GET /api/events` | Sin códigos de error nuevos |
 
-Los 87 tests nuevos cubren: comodines y grupos multi-agente en `robots.txt`, precedencia de patrones según RFC 9309, sitemaps índice y plano con fechas inválidas, ponderación de cabeceras por severidad, saltos de nivel en encabezados, la matriz completa de acceso de bots, y la separación entre contenido escaso y render en cliente.
+Los 113 tests nuevos cubren: comodines y grupos multi-agente en `robots.txt`, precedencia de patrones según RFC 9309, sitemaps índice y plano con fechas inválidas, ponderación de cabeceras por severidad, saltos de nivel en encabezados, la matriz completa de acceso de bots, la separación entre contenido escaso y render en cliente, y la frontera entre enlace roto y acceso restringido.
 
 ---
 
@@ -150,7 +171,7 @@ Descartado también como causa: la versión de Node, que se había señalado ant
 
 Hallazgo colateral: `app/page.tsx` exporta `dynamic = 'force-dynamic'` dentro de un componente marcado `'use client'`. La configuración de segmento de ruta es una función solo de servidor y no tiene efecto ahí. No causa el fallo del build —se comprobó— pero conviene retirarlo.
 
-#### B. Producción está desactualizada
+#### B. Producción no recibía los despliegues — causa raíz identificada
 
 Comprobado en vivo sobre `baral-audit-dashboard.vercel.app`:
 
@@ -159,12 +180,28 @@ Comprobado en vivo sobre `baral-audit-dashboard.vercel.app`:
 | `/api/events` | 200 | **404** |
 | `/api/queue` | 501 | **200** |
 
-El sitio funciona, pero sirve código anterior al último commit. El push se hizo y el despliegue no llegó. La causa está en el panel de Vercel: o el build falló allí, o el despliegue no se disparó.
+La cabecera `age` confirmaba una versión de casi 29 horas.
 
-Es un asunto separado del anterior y **es el que hay que resolver primero**, porque mientras siga así ningún trabajo llega a los usuarios.
+**La causa:** el repositorio nunca estuvo conectado a Vercel. GitHub no registra un solo *deployment* ni *status* de Vercel en todo el historial — si la integración existiera, publicaría uno en cada push. Producción se desplegó en su momento por CLI.
+
+Al intentar conectarlo, el error es explícito:
+
+> You need admin or write access to the repository "baral-audit-dashboard" to link it.
+
+La cuenta de Vercel es **`cosu123`** y su integración con GitHub sigue apuntando a la cuenta `cosu123`, que está suspendida. El repositorio vive en **`Univers77`**. Vercel no tiene permiso sobre él.
+
+**Resolución:** requiere reautorizar la integración de GitHub dentro del panel de Vercel, contra la cuenta `Univers77`. Es un flujo OAuth de cuentas y solo lo puede hacer el titular.
+
+**Comprobado mientras tanto:** un despliegue de vista previa por CLI terminó en `readyState: READY`. Vercel compila este proyecto sin problema en Linux con Node 24. Eso cierra definitivamente la duda sobre si el fallo local afectaba a producción: no lo hacía.
+
+Nota operativa: la subida por CLI falla con `fetch failed` en modo por defecto y funciona con `--archive=tgz`.
 
 ### Siguiente ronda
 
-- Probe de visibilidad en IA (AEO), con caché y presupuesto de tokens propios
-- Descomposición de tráfico oscuro, cuando GA4 esté conectado
-- Enlaces rotos y crawl multipágina: el campo `brokenLinks` existe y sigue siempre vacío
+- **Probe de visibilidad en IA (AEO).** Necesita diseño propio: caché por dominio y presupuesto de tokens, porque el resultado no es determinista y encarecería cada escaneo.
+- **Descomposición de tráfico oscuro.** Bloqueado hasta que GA4 esté conectado; hoy no se puede verificar de punta a punta.
+- **Crawl multipágina.** La comprobación de enlaces ya recorre una muestra, pero el análisis sigue evaluando una sola página. Un crawl real abriría títulos y descripciones duplicados entre páginas, páginas huérfanas y distribución de contenido delgado.
+
+### Verificación de los pilares del puntaje
+
+Los cinco pilares declaran cobertura, pero los denominadores de SEO (12), rendimiento (6) y conversión (9) son estimaciones de criterio profesional, no recuentos con fuente citable como el de accesibilidad (56 criterios WCAG 2.2 A+AA). Conviene sustituirlos por listas explícitas de chequeos nombrados para que la cifra sea auditable.

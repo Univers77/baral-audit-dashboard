@@ -64,9 +64,10 @@ export function computeCoverage(raw: RawScan, ar: AgentReadiness): ScoreCoverage
         raw.sitemapInfo !== null,
         raw.hasSchema !== undefined,
         raw.internalLinks >= 0,
+        raw.linkChecks.length > 0,
       ].filter(Boolean).length,
       total: 12,
-      note: 'Sin acceso a Search Console no se pueden medir posiciones, impresiones ni consultas reales. Se evalúa una sola página, no el sitio completo.',
+      note: `Sin acceso a Search Console no se pueden medir posiciones, impresiones ni consultas reales. Se evalúa una sola página, y de sus enlaces se comprobó una muestra de ${raw.linkChecks.length}.`,
     },
     {
       key: 'performance',

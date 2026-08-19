@@ -51,6 +51,7 @@ function scan(over: Partial<RawScan> = {}): RawScan {
     externalLinks: 5,
     externalNofollow: 2,
     internalUrls: [],
+    linkChecks: [],
     brokenLinks: [],
     hreflangCount: 0,
     langAttr: 'es',
@@ -178,6 +179,49 @@ describe('analyze — estructura y frescura', () => {
       },
     }))
     assert.equal(titles(r).includes('publicaciones nuevas'), false)
+  })
+})
+
+describe('analyze — enlaces rotos', () => {
+  const check = (over: Partial<import('@/lib/scanner/broken-links').LinkCheck>) => ({
+    url: 'https://ejemplo.com/x', kind: 'internal' as const, status: 404,
+    verdict: 'roto' as const, reason: '', ...over,
+  })
+
+  it('emite hallazgo P1 cuando hay internos rotos', () => {
+    const r = analyze(scan({ linkChecks: [check({})] }))
+    const f = r.findings.find(x => x.title.includes('roto'))
+    assert.ok(f)
+    assert.equal(f.priority, 'P1')
+    assert.equal(f.evidence.length, 1)
+  })
+
+  it('baja a P2 si los rotos son solo externos', () => {
+    const r = analyze(scan({ linkChecks: [check({ kind: 'external' })] }))
+    assert.equal(r.findings.find(x => x.title.includes('roto'))?.priority, 'P2')
+  })
+
+  it('no cuenta como roto un 403 ni un enlace sin respuesta', () => {
+    const r = analyze(scan({
+      linkChecks: [
+        check({ status: 403, verdict: 'restringido' }),
+        check({ status: null, verdict: 'sin-respuesta' }),
+      ],
+    }))
+    assert.equal(r.findings.some(x => x.title.includes('roto')), false)
+  })
+
+  it('reporta los sin respuesta aparte y con prioridad baja', () => {
+    const r = analyze(scan({ linkChecks: [check({ status: null, verdict: 'sin-respuesta' })] }))
+    const f = r.compactFindings.find(x => x.title.includes('sin respuesta'))
+    assert.ok(f)
+    assert.equal(f.priority, 'P3')
+  })
+
+  it('no emite nada cuando todos responden bien', () => {
+    const r = analyze(scan({ linkChecks: [check({ status: 200, verdict: 'ok' })] }))
+    assert.equal(titles(r).includes('roto'), false)
+    assert.equal(titles(r).includes('sin respuesta'), false)
   })
 })
 

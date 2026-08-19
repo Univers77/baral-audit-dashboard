@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test tests/safe-remote-fetch.test.ts tests/links.test.ts tests/psi-parse.test.ts tests/claude-output.test.ts tests/robots.test.ts tests/sitemap.test.ts tests/headers.test.ts tests/headings.test.ts tests/agent-readiness.test.ts tests/analyzer.test.ts"
+    "test": "node --import tsx --test tests/safe-remote-fetch.test.ts tests/links.test.ts tests/psi-parse.test.ts tests/claude-output.test.ts tests/robots.test.ts tests/sitemap.test.ts tests/headers.test.ts tests/headings.test.ts tests/agent-readiness.test.ts tests/analyzer.test.ts tests/broken-links.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",
