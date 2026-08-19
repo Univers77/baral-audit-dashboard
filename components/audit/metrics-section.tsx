@@ -157,7 +157,7 @@ export function MetricsSection({ scanResult }: { scanResult: AuditResult | null 
           </div>
         )}
 
-        {scanResult ? <CoveragePanel result={scanResult} /> : null}
+        {scanResult?.coverage?.pillars ? <CoveragePanel result={scanResult} /> : null}
       </div>
     </section>
   )

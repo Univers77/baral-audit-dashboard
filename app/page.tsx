@@ -24,6 +24,7 @@ import { MethodologySection } from '@/components/audit/methodology-section'
 import { PackagesSection } from '@/components/audit/packages-section'
 import { UrlScanner } from '@/components/scanner/url-scanner'
 import type { Priority } from '@/lib/audit-data'
+import { restoreLastResult } from '@/lib/scanner/restore'
 import type { AuditResult } from '@/lib/scanner/types'
 import type { GA4Metrics } from '@/lib/ga4/types'
 import type { PsiResult } from '@/lib/psi/types'
@@ -37,10 +38,7 @@ export default function Page() {
   const [psi, setPsi] = useState<PsiResult | null>(null)
 
   useEffect(() => {
-    try {
-      const saved = sessionStorage.getItem('auditorx-last-result')
-      if (saved) setScanResult(JSON.parse(saved))
-    } catch {}
+    setScanResult(restoreLastResult())
   }, [])
 
   const handleResult = useCallback((r: AuditResult) => {

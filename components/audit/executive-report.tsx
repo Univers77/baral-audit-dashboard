@@ -423,6 +423,7 @@ export function ExecutiveReport({ scanResult, ga4Data }: { scanResult: AuditResu
       )}
 
       {/* ── Agent-Readiness ── */}
+      {r.agentReadiness && (
       <section style={{ breakAfter: 'page', padding: '20px 8px' }}>
         <PageHeader domain={r.domain} />
         <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 6px' }}>Legibilidad para agentes de IA</h2>
@@ -464,8 +465,10 @@ export function ExecutiveReport({ scanResult, ga4Data }: { scanResult: AuditResu
           </tbody>
         </table>
       </section>
+      )}
 
       {/* ── Cobertura declarada ── */}
+      {r.coverage?.pillars && (
       <section style={{ breakAfter: 'page', padding: '20px 8px' }}>
         <PageHeader domain={r.domain} />
         <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 6px' }}>Alcance real de esta medición</h2>
@@ -491,6 +494,7 @@ export function ExecutiveReport({ scanResult, ga4Data }: { scanResult: AuditResu
           </tbody>
         </table>
       </section>
+      )}
 
       {/* ── GA4 (si conectado) ── */}
       {ga4Data && (

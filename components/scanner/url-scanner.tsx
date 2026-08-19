@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Search, Loader2, ChevronDown, ChevronUp, Clock, Globe, AlertTriangle, CheckCircle2, XCircle, Sparkles, Target, Zap, TrendingUp, ShieldAlert, BarChart2 } from 'lucide-react'
+import { LAST_RESULT_KEY, restoreLastResult } from '@/lib/scanner/restore'
 import type { AuditResult } from '@/lib/scanner/types'
 
 type ProgressMsg = { step: number; total: number; message: string; pct: number }
@@ -71,9 +72,8 @@ export function UrlScanner({ onResult }: { onResult?: (r: AuditResult) => void }
     try {
       const params = new URLSearchParams(window.location.search)
       const urlParam = params.get('url')
-      const saved = sessionStorage.getItem('auditorx-last-result')
-      if (saved) {
-        const parsed: AuditResult = JSON.parse(saved)
+      const parsed = restoreLastResult()
+      if (parsed) {
         setResult(parsed)
         setInputUrl(parsed.url)
       } else if (urlParam) {
@@ -114,7 +114,7 @@ export function UrlScanner({ onResult }: { onResult?: (r: AuditResult) => void }
       loadHistory()
       // Persistir para sobrevivir recarga
       try {
-        sessionStorage.setItem('auditorx-last-result', JSON.stringify(r))
+        sessionStorage.setItem(LAST_RESULT_KEY, JSON.stringify(r))
         const u = new URL(window.location.href)
         u.searchParams.set('url', r.url)
         window.history.replaceState({}, '', u.toString())
