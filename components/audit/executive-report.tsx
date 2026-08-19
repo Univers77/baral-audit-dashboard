@@ -1,5 +1,6 @@
 'use client'
 
+import { formatCwv } from '@/lib/psi/parse'
 import type { AuditResult, AuditFinding } from '@/lib/scanner/types'
 import type { GA4Metrics } from '@/lib/ga4/types'
 
@@ -346,6 +347,150 @@ export function ExecutiveReport({ scanResult, ga4Data }: { scanResult: AuditResu
           </table>
         </section>
       )}
+
+      {/* ── PageSpeed ──
+          Antes estas métricas se veían en pantalla y no llegaban al documento
+          entregado: el cliente recibía un informe sin sus Core Web Vitals. */}
+      {r.psi && (
+        <section style={{ breakAfter: 'page', padding: '20px 8px' }}>
+          <PageHeader domain={r.domain} />
+          <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 6px' }}>Velocidad medida por Google — PageSpeed Insights</h2>
+          <p style={{ fontSize: 11, color: MUTED, margin: '0 0 14px' }}>
+            Estrategia móvil, que es la que Google usa para indexar.
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
+            {([
+              ['Rendimiento', r.psi.scores.performance],
+              ['Accesibilidad', r.psi.scores.accessibility],
+              ['Buenas prácticas', r.psi.scores.bestPractices],
+              ['SEO', r.psi.scores.seo],
+            ] as [string, number | null][]).map(([k, v]) => (
+              <div key={k} style={{ border: `1px solid ${BORDER}`, borderRadius: 8, padding: 12, textAlign: 'center' }}>
+                <p style={{ fontSize: 22, fontWeight: 800, margin: 0, color: v === null ? MUTED : scoreColor(v) }}>
+                  {v ?? '—'}
+                </p>
+                <p style={{ fontSize: 9, fontFamily: 'monospace', color: MUTED, margin: '4px 0 0' }}>{k.toUpperCase()}</p>
+              </div>
+            ))}
+          </div>
+
+          {r.psi.field.available ? (
+            <>
+              <h3 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 8px' }}>
+                Experiencia de usuarios reales (últimos 28 días)
+              </h3>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5, marginBottom: 14 }}>
+                <tbody>
+                  {r.psi.field.metrics.map(m => (
+                    <tr key={m.key} style={{ borderTop: `1px solid ${BORDER}` }}>
+                      <td style={{ padding: '6px 8px' }}>{m.label}</td>
+                      <td style={{ padding: '6px 8px', fontFamily: 'monospace', textAlign: 'right' }}>{formatCwv(m)}</td>
+                      <td style={{ padding: '6px 8px', textAlign: 'right', color: MUTED, textTransform: 'uppercase', fontSize: 10 }}>
+                        {m.verdict}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          ) : (
+            <p style={{ fontSize: 11.5, color: MUTED, marginBottom: 14 }}>
+              Google no tiene datos de usuarios reales para este sitio: hacen falta 28 días con
+              tráfico suficiente. Los puntajes de arriba son de laboratorio, medidos en condiciones
+              simuladas.
+            </p>
+          )}
+
+          {r.psi.opportunities.length > 0 && (
+            <>
+              <h3 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 8px' }}>Dónde se gana más tiempo</h3>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5 }}>
+                <tbody>
+                  {r.psi.opportunities.slice(0, 6).map(o => (
+                    <tr key={o.key} style={{ borderTop: `1px solid ${BORDER}` }}>
+                      <td style={{ padding: '6px 8px' }}>{o.title}</td>
+                      <td style={{ padding: '6px 8px', fontFamily: 'monospace', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        −{(o.savingsMs / 1000).toFixed(1)} s
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+        </section>
+      )}
+
+      {/* ── Agent-Readiness ── */}
+      <section style={{ breakAfter: 'page', padding: '20px 8px' }}>
+        <PageHeader domain={r.domain} />
+        <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 6px' }}>Legibilidad para agentes de IA</h2>
+        <p style={{ fontSize: 11, color: MUTED, margin: '0 0 14px' }}>
+          Un asistente de IA no ve el diseño: lee datos estructurados y comprueba si tiene permiso
+          para rastrear. Este eje mide si el sitio es utilizable por ese canal.
+        </p>
+
+        <div style={{ display: 'flex', gap: 16, alignItems: 'baseline', marginBottom: 14 }}>
+          <span style={{ fontSize: 34, fontWeight: 800, color: scoreColor(r.agentReadiness.score) }}>
+            {r.agentReadiness.score}
+          </span>
+          <span style={{ fontSize: 11, color: MUTED }}>
+            de 100 · {r.agentReadiness.coverage.run} de {r.agentReadiness.coverage.total} chequeos ejecutados
+          </span>
+        </div>
+
+        {r.agentReadiness.blockedCount > 0 && (
+          <p style={{ fontSize: 12.5, color: scoreColor(0), fontWeight: 600, marginBottom: 12 }}>
+            robots.txt bloquea {r.agentReadiness.blockedCount} rastreador(es) de IA:{' '}
+            {r.agentReadiness.bots.filter(b => b.access === 'blocked').map(b => b.name).join(', ')}.
+          </p>
+        )}
+
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5 }}>
+          <tbody>
+            {r.agentReadiness.checks.map(c => (
+              <tr key={c.key} style={{ borderTop: `1px solid ${BORDER}` }}>
+                <td style={{ padding: '6px 8px', width: 26, fontFamily: 'monospace' }}>
+                  {c.pass === null ? '—' : c.pass ? '✓' : '✗'}
+                </td>
+                <td style={{ padding: '6px 8px' }}>
+                  <strong>{c.label}</strong>
+                  <br />
+                  <span style={{ color: MUTED }}>{c.detail}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      {/* ── Cobertura declarada ── */}
+      <section style={{ breakAfter: 'page', padding: '20px 8px' }}>
+        <PageHeader domain={r.domain} />
+        <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 6px' }}>Alcance real de esta medición</h2>
+        <p style={{ fontSize: 11.5, color: MUTED, margin: '0 0 14px' }}>
+          Ningún análisis automático cubre todo. Esta tabla declara de cuántos chequeos posibles se
+          sostiene cada puntaje, para que se lean como lo que son: una muestra, no un veredicto.
+        </p>
+
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5 }}>
+          <tbody>
+            {r.coverage.pillars.map(p => (
+              <tr key={p.key} style={{ borderTop: `1px solid ${BORDER}` }}>
+                <td style={{ padding: '8px', verticalAlign: 'top', width: 110 }}>
+                  <strong>{p.label}</strong>
+                  <br />
+                  <span style={{ fontFamily: 'monospace', color: MUTED, fontSize: 10.5 }}>
+                    {p.run} de {p.total}
+                  </span>
+                </td>
+                <td style={{ padding: '8px', color: MUTED }}>{p.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
 
       {/* ── GA4 (si conectado) ── */}
       {ga4Data && (

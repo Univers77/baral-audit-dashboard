@@ -156,7 +156,71 @@ export function MetricsSection({ scanResult }: { scanResult: AuditResult | null 
             })}
           </div>
         )}
+
+        {scanResult ? <CoveragePanel result={scanResult} /> : null}
       </div>
     </section>
+  )
+}
+
+/**
+ * De qué se sostiene cada puntaje.
+ *
+ * Un 45 en accesibilidad y un 45 en rendimiento no valen lo mismo: el primero
+ * se apoya en 5 criterios de 56 posibles. Presentarlos con la misma autoridad
+ * es lo que hace que un informe automático se lea como un veredicto cuando es
+ * una muestra. Ninguna herramienta comercial declara esto.
+ */
+function CoveragePanel({ result }: { result: AuditResult }) {
+  const { pillars, overallPct } = result.coverage
+
+  return (
+    <Reveal delay={120}>
+      <div className="glass mt-4 rounded-3xl p-6">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="font-mono text-[11px] tracking-[0.14em] uppercase">
+            De qué se sostienen estos puntajes
+          </h3>
+          <span className="text-muted-foreground/60 font-mono text-[11px]">
+            cobertura media {overallPct}%
+          </span>
+        </div>
+
+        <p className="text-muted-foreground/70 mt-2 text-[13px]">
+          Un chequeo que no se pudo ejecutar no cuenta como aprobado: queda fuera del puntaje y se
+          declara aquí.
+        </p>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {pillars.map(p => {
+            const pct = p.total === 0 ? 0 : Math.round((p.run / p.total) * 100)
+            const color = pct >= 60 ? 'var(--nova)' : pct >= 25 ? 'var(--solar)' : 'var(--pulsar)'
+            return (
+              <div
+                key={p.key}
+                className="rounded-2xl p-4"
+                style={{ border: '1px solid var(--border)', background: 'oklch(1 0 0 / 0.02)' }}
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-[13px] font-semibold">{p.label}</span>
+                  <span className="font-mono text-[12px] tabular-nums" style={{ color }}>
+                    {p.run}/{p.total}
+                  </span>
+                </div>
+
+                <div
+                  className="relative mt-3 h-1 overflow-hidden rounded-full"
+                  style={{ background: 'oklch(1 0 0 / 0.07)' }}
+                >
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
+                </div>
+
+                <p className="text-muted-foreground/65 mt-3 text-[12px]">{p.note}</p>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </Reveal>
   )
 }

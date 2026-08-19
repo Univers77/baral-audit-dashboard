@@ -1,3 +1,9 @@
+import type { HeadingNode } from './headings'
+import type { SitemapInfo } from './sitemap'
+import type { AgentReadiness, FormStats, SchemaIdentity } from './agent-readiness'
+import type { ScoreCoverage } from './coverage'
+import type { PsiResult } from '@/lib/psi/types'
+
 export interface RawScan {
   url: string
   domain: string
@@ -18,6 +24,8 @@ export interface RawScan {
   h1s: string[]
   h2s: string[]
   h3s: string[]
+  /** todos los encabezados en orden de documento — permite validar la jerarquía */
+  headingOutline: HeadingNode[]
   canonical: string | null
   hasViewportMeta: boolean
   hasRobotsMeta: boolean
@@ -30,8 +38,15 @@ export interface RawScan {
   imagesNoAltAttr: number
   // Content
   wordCount: number
+  /** scripts en el HTML servido — con wordCount bajo delata render en cliente */
+  scriptCount: number
+  /** contenedor raíz típico de una aplicación que se monta en el navegador */
+  hasSpaRoot: boolean
   hasSchema: boolean
   schemaTypes: string[]
+  /** campos presentes por nodo de identidad — lo que un agente puede leer */
+  schemaIdentity: SchemaIdentity[]
+  forms: FormStats
   hasOpenGraph: boolean
   hasTwitterCard: boolean
   // Links
@@ -55,6 +70,13 @@ export interface RawScan {
   sitemapExists: boolean
   /** estándar propuesto para guiar crawlers de LLMs */
   llmsTxtExists: boolean
+  /** contenido de robots.txt, truncado. Antes solo se comprobaba existencia. */
+  robotsTxtContent: string | null
+  /** sitemap ya parseado: el XML crudo puede pesar megabytes */
+  sitemapInfo: SitemapInfo | null
+  llmsTxtContent: string | null
+  /** manifiestos de descubrimiento para agentes */
+  wellKnown: { aiPlugin: boolean; mcp: boolean }
   // Raw HTML (truncated for analysis)
   htmlSnippet: string
   /** stack detectado sobre el HTML completo, no sobre htmlSnippet */
@@ -96,6 +118,16 @@ export interface AuditResult {
   compactFindings: AuditCompactFinding[]
   tech: { label: string; crit: boolean; note: string }[]
   raw: RawScan
+  /** eje independiente: legibilidad del sitio para agentes de IA */
+  agentReadiness: AgentReadiness
+  /** de qué se sostiene cada puntaje — un chequeo no ejecutado no es un aprobado */
+  coverage: ScoreCoverage
+  /**
+   * PageSpeed se dispara desde el cliente y se adjunta aquí antes de exportar.
+   * Sin esto el cliente veía Core Web Vitals en pantalla que desaparecían del
+   * PDF y del JSON que se le entregaba.
+   */
+  psi?: PsiResult
   claudeEnrichment?: {
     executiveSummary: string
     topPriority: string

@@ -65,7 +65,18 @@ function DistBar({ d }: { d: [number, number, number] }) {
   )
 }
 
-export function PsiSection({ scanResult }: { scanResult: AuditResult | null }) {
+export function PsiSection({
+  scanResult,
+  onPsiResult,
+}: {
+  scanResult: AuditResult | null
+  /**
+   * Eleva el resultado móvil para que el informe exportable lo incluya. Sin
+   * esto el cliente veía Core Web Vitals en pantalla que desaparecían del PDF
+   * y del JSON que se le entregaba.
+   */
+  onPsiResult?: (r: PsiResult) => void
+}) {
   const [strategy, setStrategy] = useState<Strategy>('mobile')
   const [data, setData] = useState<Record<Strategy, PsiResult | null>>({ mobile: null, desktop: null })
   const [loading, setLoading] = useState(false)
@@ -86,13 +97,16 @@ export function PsiSection({ scanResult }: { scanResult: AuditResult | null }) {
         setError({ msg: json.error ?? 'No se pudo consultar PageSpeed', hint: json.hint, quota: json.quotaExceeded })
       } else {
         setData(prev => ({ ...prev, [s]: json }))
+        // Móvil es la estrategia que Google usa para indexar: es la que viaja
+        // al informe.
+        if (s === 'mobile') onPsiResult?.(json)
       }
     } catch (e) {
       setError({ msg: e instanceof Error ? e.message : 'Error de red' })
     } finally {
       setLoading(false)
     }
-  }, [url, data])
+  }, [url, data, onPsiResult])
 
   // Se dispara al aparecer un resultado nuevo. Solo móvil: es la estrategia que
   // Google usa para indexar, y cada consulta cuesta cuota.

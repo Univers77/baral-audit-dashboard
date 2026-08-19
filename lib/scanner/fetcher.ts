@@ -1,6 +1,8 @@
 import * as cheerio from 'cheerio'
 import { safeFetchOk, safeFetchText, UnsafeUrlError } from '@/lib/security/safe-remote-fetch'
 import { classifyLink, isCapturablePage } from './links'
+import { parseSitemap } from './sitemap'
+import type { FormStats, SchemaIdentity } from './agent-readiness'
 import type { RawScan, ScanError, DeviceShots } from './types'
 
 const UA = 'Mozilla/5.0 (compatible; MasterWebAuditor/2.0; +https://baralintegral.com)'
@@ -116,6 +118,20 @@ function detectTech(html: string, headers: Record<string, string>): { label: str
   return out
 }
 
+/**
+ * Descarga un archivo auxiliar. Devuelve null si no existe o no responde:
+ * su ausencia es un dato válido del informe, nunca un fallo del escaneo.
+ */
+async function fetchTextOrNull(url: string): Promise<string | null> {
+  try {
+    const r = await safeFetchText(url, { timeoutMs: 5_000 })
+    if (r.status < 200 || r.status >= 300) return null
+    return r.bodyText
+  } catch {
+    return null
+  }
+}
+
 function normalizeUrl(input: string): string {
   const s = input.trim()
   if (/^https?:\/\//i.test(s)) return s
@@ -176,6 +192,14 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
   const h2s = $('h2').map((_, el) => $(el).text().trim()).get().filter(Boolean)
   const h3s = $('h3').map((_, el) => $(el).text().trim()).get().filter(Boolean)
 
+  // Un único selector devuelve los encabezados en orden de documento, que es lo
+  // que hace falta para detectar saltos de nivel. Los arrays h1s/h2s/h3s por
+  // separado pierden esa relación.
+  const headingOutline = $('h1,h2,h3,h4,h5,h6').map((_, el) => ({
+    level: Number(el.tagName.slice(1)),
+    text: $(el).text().trim(),
+  })).get()
+
   // Images
   const imgs = $('img')
   const totalImages = imgs.length
@@ -199,6 +223,9 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
   const schemaScripts = $('script[type="application/ld+json"]')
   const hasSchema = schemaScripts.length > 0
   const schemaTypes: string[] = []
+  // Qué campos trae cada nodo, no solo su tipo: un agente necesita saber si
+  // Organization declara dirección y teléfono, no solo que existe.
+  const schemaIdentity: SchemaIdentity[] = []
   schemaScripts.each((_, el) => {
     try {
       const parsed = JSON.parse($(el).text() || '{}')
@@ -208,7 +235,13 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
       for (const n of nodes) {
         const t = n?.['@type'] ?? n?.type
         if (!t) continue
-        for (const one of Array.isArray(t) ? t : [t]) schemaTypes.push(String(one))
+        const fields = n && typeof n === 'object'
+          ? Object.keys(n).filter(k => !k.startsWith('@'))
+          : []
+        for (const one of Array.isArray(t) ? t : [t]) {
+          schemaTypes.push(String(one))
+          schemaIdentity.push({ type: String(one), fields })
+        }
       }
     } catch {}
   })
@@ -223,6 +256,42 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
   const hasFavicon = $('link[rel*="icon"]').length > 0
   const iframeCount = $('iframe').length
   const inlineStyleCount = $('[style]').length
+
+  // ── Señales de render en cliente ──
+  // Deben leerse antes del remove() del word count, que destruye los <script>.
+  const scriptCount = $('script').length
+  const hasSpaRoot =
+    $('#root, #app, #__next, [data-reactroot], [ng-version]').length > 0 ||
+    /__NEXT_DATA__|__NUXT__/.test(htmlRaw)
+
+  // ── Formularios ──
+  // Un agente identifica cada campo por su atributo name y su etiqueta. Es
+  // también el criterio WCAG 2.2 §3.3.2, que hasta ahora no se comprobaba.
+  const formCount = $('form').length
+  const inputs = $('input, select, textarea').filter((_, el) => {
+    const type = ($(el).attr('type') ?? '').toLowerCase()
+    return type !== 'hidden' && type !== 'submit' && type !== 'button'
+  })
+  let withName = 0, withAutocomplete = 0, withLabel = 0
+  inputs.each((_, el) => {
+    const $el = $(el)
+    if ($el.attr('name')) withName++
+    if ($el.attr('autocomplete')) withAutocomplete++
+    const id = $el.attr('id')
+    const labelled =
+      (id && $(`label[for="${id.replace(/"/g, '\\"')}"]`).length > 0) ||
+      $el.parents('label').length > 0 ||
+      !!$el.attr('aria-label') ||
+      !!$el.attr('aria-labelledby')
+    if (labelled) withLabel++
+  })
+  const forms: FormStats = {
+    formCount,
+    inputCount: inputs.length,
+    withName,
+    withAutocomplete,
+    withLabel,
+  }
 
   // Emails en texto plano — cosechables por bots de spam
   const emailsInPlainText = [
@@ -263,13 +332,17 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
   const bodyText = $('body').text().replace(/\s+/g, ' ').trim()
   const wordCount = bodyText.split(' ').filter(w => w.length > 2).length
 
-  // External checks (robots.txt + sitemap + llms.txt para crawlers de IA)
-  // Solo se comprueba existencia HTTP, no la validez del contenido.
+  // ── Archivos externos ──
+  // Antes solo se comprobaba que existieran y se tiraba el contenido. Leerlos
+  // no cuesta una petición más y es lo que permite saber si el sitio bloquea
+  // rastreadores de IA o lleva meses sin publicar.
   const baseUrl = pageOrigin
-  const [robotsTxtExists, sitemapExists, llmsTxtExists] = await Promise.all([
-    safeFetchOk(`${baseUrl}/robots.txt`, { timeoutMs: 5_000 }),
-    safeFetchOk(`${baseUrl}/sitemap.xml`, { timeoutMs: 5_000 }),
-    safeFetchOk(`${baseUrl}/llms.txt`, { timeoutMs: 5_000 }),
+  const [robotsTxt, sitemapXml, llmsTxt, aiPlugin, mcpCard] = await Promise.all([
+    fetchTextOrNull(`${baseUrl}/robots.txt`),
+    fetchTextOrNull(`${baseUrl}/sitemap.xml`),
+    fetchTextOrNull(`${baseUrl}/llms.txt`),
+    safeFetchOk(`${baseUrl}/.well-known/ai-plugin.json`, { timeoutMs: 5_000 }).catch(() => false),
+    safeFetchOk(`${baseUrl}/.well-known/mcp.json`, { timeoutMs: 5_000 }).catch(() => false),
   ])
 
   return {
@@ -289,6 +362,7 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
     h1s,
     h2s,
     h3s,
+    headingOutline,
     canonical,
     hasViewportMeta,
     hasRobotsMeta,
@@ -298,6 +372,9 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
     imagesWithEmptyAlt,
     imagesNoAltAttr,
     wordCount,
+    scriptCount,
+    hasSpaRoot,
+    forms,
     hreflangCount,
     langAttr,
     hasFavicon,
@@ -306,16 +383,21 @@ export async function fetchAndScan(rawUrl: string): Promise<RawScan | ScanError>
     emailsInPlainText,
     externalNofollow,
     internalUrls,
-    llmsTxtExists,
+    llmsTxtExists: llmsTxt !== null,
     hasSchema,
     schemaTypes,
+    schemaIdentity,
     hasOpenGraph,
     hasTwitterCard,
     internalLinks,
     externalLinks,
     brokenLinks: [],
-    robotsTxtExists,
-    sitemapExists,
+    robotsTxtExists: robotsTxt !== null,
+    sitemapExists: sitemapXml !== null,
+    robotsTxtContent: robotsTxt === null ? null : robotsTxt.slice(0, 8000),
+    sitemapInfo: sitemapXml === null ? null : parseSitemap(sitemapXml),
+    llmsTxtContent: llmsTxt === null ? null : llmsTxt.slice(0, 4000),
+    wellKnown: { aiPlugin, mcp: mcpCard },
     htmlSnippet: htmlRaw.slice(0, 2000),
     techDetected: detectTech(htmlRaw, headers),
     screenshotUrl: buildDeviceShots(url).desktop,

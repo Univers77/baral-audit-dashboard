@@ -1,3 +1,9 @@
+import { computeAgentReadiness, words } from './agent-readiness'
+import { computeCoverage } from './coverage'
+import { auditSecurityHeaders, detectHeaderLeaks } from './headers'
+import { auditHeadings } from './headings'
+import { parseRobots } from './robots'
+import { STALE_THRESHOLD_DAYS } from './sitemap'
 import type { RawScan, AuditResult, AuditFinding, AuditCompactFinding } from './types'
 
 let findingCounter = 0
@@ -181,12 +187,23 @@ export function analyze(raw: RawScan): AuditResult {
     })
   }
 
-  // Thin content
+  // Contenido escaso — pero antes hay que distinguir la causa.
+  // El escáner no ejecuta JavaScript, igual que la mayoría de rastreadores. En
+  // una aplicación que se monta en el navegador el texto existe pero no viaja
+  // en el HTML: reportarlo como "contenido delgado" era un diagnóstico
+  // invertido, porque el problema real es más grave y la solución es otra.
   if (raw.wordCount < 300 && raw.wordCount > 0) {
-    compact.push({
-      id: nextId(`${dom}-CONTENT`), module: 'M06',
-      title: `Thin content: solo ${raw.wordCount} palabras (benchmark mínimo: 300+)`, effort: 'Alto', priority: 'P2',
-    })
+    const clientRendered = raw.wordCount < 200 && (raw.hasSpaRoot || raw.scriptCount >= 5)
+    compact.push(clientRendered
+      ? {
+          id: nextId(`${dom}-CONTENT`), module: 'M03',
+          title: `Contenido montado en el navegador: el HTML servido trae solo ${words(raw.wordCount)} con ${raw.scriptCount} scripts. Los rastreadores que no ejecutan JavaScript ven la página vacía`,
+          effort: 'Alto', priority: 'P1',
+        }
+      : {
+          id: nextId(`${dom}-CONTENT`), module: 'M06',
+          title: `Contenido escaso: solo ${words(raw.wordCount)} (referencia mínima: 300)`, effort: 'Alto', priority: 'P2',
+        })
   }
 
   // TTFB lento
@@ -316,11 +333,13 @@ export function analyze(raw: RawScan): AuditResult {
     })
   }
 
-  // llms.txt — visibilidad ante buscadores generativos
+  // llms.txt — señal complementaria, deliberadamente sin inflar.
+  // Google declaró en mayo de 2026 que no es necesaria para la búsqueda
+  // generativa. Los checklists de proveedores la venden como requisito.
   if (!raw.llmsTxtExists) {
     compact.push({
       id: nextId(`${dom}-GEO`), module: 'M19',
-      title: 'Sin llms.txt — no hay guía para crawlers de IA (ChatGPT, Perplexity, Claude) sobre qué contenido priorizar',
+      title: 'Sin llms.txt — señal complementaria para crawlers de IA. Google no la exige para búsqueda generativa; suma poco y su ausencia no bloquea nada',
       effort: 'Bajo', priority: 'P3',
     })
   }
@@ -338,6 +357,102 @@ export function analyze(raw: RawScan): AuditResult {
     compact.push({
       id: nextId(`${dom}-SOCIAL`), module: 'M17',
       title: 'Sin Twitter Card meta — compartir en X/Twitter sin preview visual', effort: 'Bajo', priority: 'P3',
+    })
+  }
+
+  // ── Agent-Readiness ───────────────────────────────────────
+  // Eje independiente: qué ve un agente de IA, que no es lo que ve una persona.
+  const robotsRules = raw.robotsTxtContent ? parseRobots(raw.robotsTxtContent) : null
+  const agentReadiness = computeAgentReadiness({
+    statusCode: raw.statusCode,
+    wordCount: raw.wordCount,
+    scriptCount: raw.scriptCount,
+    hasSpaRoot: raw.hasSpaRoot,
+    canonical: raw.canonical,
+    robots: robotsRules,
+    schemaIdentity: raw.schemaIdentity,
+    llmsTxt: raw.llmsTxtContent,
+    wellKnown: raw.wellKnown,
+    forms: raw.forms,
+  })
+
+  // Un rastreador bloqueado no puede citar el sitio. Es invisibilidad
+  // involuntaria en el canal que más crece, y casi nadie lo revisa.
+  const blockedBots = agentReadiness.bots.filter(b => b.access === 'blocked')
+  if (blockedBots.length > 0) {
+    findings.push({
+      id: nextId(`${dom}-AGENT`), module: 'M19', category: 'Visibilidad en IA', priority: 'P1',
+      stage: 'discover',
+      title: `robots.txt bloquea ${blockedBots.length} rastreador(es) de IA`,
+      what: `Los siguientes agentes tienen prohibido el acceso: ${blockedBots.map(b => `${b.name} (${b.operator})`).join(', ')}.`,
+      impactBusiness: 'El sitio no puede aparecer citado en las respuestas de esos asistentes. El tráfico originado en IA hacia comercio creció 393% interanual y convierte mejor que el orgánico.',
+      impactUser: 'Quien pregunta por este negocio a un asistente recibe respuestas que mencionan a la competencia.',
+      impactTech: 'Regla Disallow activa en robots.txt para esos user-agents.',
+      evidence: blockedBots.map(b => ({ source: `robots.txt · grupo ${b.via}`, value: `${b.name} bloqueado` })),
+      confidence: 99, severity: 4, scope: 2.0, businessImpact: 2.0,
+      auditxStatus: 'CONFIRMED', effort: 'Bajo',
+      direction: 'Revisar si el bloqueo fue una decisión consciente. Si no lo fue, retirar la regla Disallow para esos agentes.',
+      validate: 'Volver a leer /robots.txt y comprobar que los agentes ya no aparecen bajo una regla Disallow: /',
+      impact3mo: 'Ausencia sostenida en respuestas generativas sobre la categoría.',
+      impact6mo: 'La competencia consolida la posición citada por defecto.',
+    })
+  }
+
+  // ── Cabeceras de seguridad ────────────────────────────────
+  // Los headers ya venían en la respuesta y ningún chequeo los miraba.
+  const headerChecks = auditSecurityHeaders(raw.headers, raw.isHttps)
+  for (const c of headerChecks.filter(h => !h.present)) {
+    compact.push({
+      id: nextId(`${dom}-SEC`), module: 'M13',
+      title: `Sin cabecera ${c.label} — ${c.why}`,
+      effort: 'Bajo',
+      priority: c.severity === 'alta' ? 'P1' : c.severity === 'media' ? 'P2' : 'P3',
+    })
+  }
+  for (const leak of detectHeaderLeaks(raw.headers)) {
+    compact.push({
+      id: nextId(`${dom}-SEC`), module: 'M13',
+      title: `Cabecera ${leak.label} expone la versión del stack (${leak.value}) — facilita buscar exploits conocidos`,
+      effort: 'Bajo', priority: 'P3',
+    })
+  }
+
+  // ── Jerarquía de encabezados ──────────────────────────────
+  const headings = auditHeadings(raw.headingOutline)
+  if (headings.skips.length > 0) {
+    const s = headings.skips[0]
+    compact.push({
+      id: nextId(`${dom}-A11Y`), module: 'M08',
+      title: `Salto de nivel en encabezados (H${s.from} → H${s.to} en "${s.text}") — rompe la navegación por estructura de los lectores de pantalla (WCAG 2.2 §1.3.1)`,
+      effort: 'Bajo', priority: 'P2',
+    })
+  }
+  if (headings.emptyCount > 0) {
+    compact.push({
+      id: nextId(`${dom}-A11Y`), module: 'M08',
+      title: `${headings.emptyCount} encabezado(s) sin texto — ocupan la estructura del documento sin aportar contenido (WCAG 2.2 §2.4.6)`,
+      effort: 'Bajo', priority: 'P3',
+    })
+  }
+
+  // ── Formularios ───────────────────────────────────────────
+  if (raw.forms.inputCount > 0 && raw.forms.withLabel < raw.forms.inputCount) {
+    const missing = raw.forms.inputCount - raw.forms.withLabel
+    compact.push({
+      id: nextId(`${dom}-A11Y`), module: 'M08',
+      title: `${missing} de ${raw.forms.inputCount} campos de formulario sin etiqueta asociada — inaccesibles con lector de pantalla y no rellenables por un agente (WCAG 2.2 §3.3.2)`,
+      effort: 'Bajo', priority: 'P2',
+    })
+  }
+
+  // ── Frescura del contenido ────────────────────────────────
+  // El sitemap ya se descargaba; sus fechas revelan si el sitio sigue vivo.
+  const sm = raw.sitemapInfo
+  if (sm && sm.staleDays !== null && sm.staleDays > STALE_THRESHOLD_DAYS) {
+    compact.push({
+      id: nextId(`${dom}-CONTENT`), module: 'M06',
+      title: `Sin publicaciones nuevas hace ${sm.staleDays} días según el sitemap — señal de contenido estancado para buscadores`,
+      effort: 'Medio', priority: 'P2',
     })
   }
 
@@ -397,5 +512,7 @@ export function analyze(raw: RawScan): AuditResult {
     compactFindings: compact,
     tech,
     raw,
+    agentReadiness,
+    coverage: computeCoverage(raw, agentReadiness),
   }
 }
