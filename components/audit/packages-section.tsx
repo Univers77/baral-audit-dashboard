@@ -4,7 +4,7 @@ import { Reveal, SectionHeader } from '@/components/cosmos/primitives'
 import { classify, PACKAGES, type PackageId } from '@/lib/packages'
 import type { AuditResult } from '@/lib/scanner/types'
 import { Check, Minus, Cpu, Clock, FileStack } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
 const ACCENT: Record<PackageId, string> = {
   radiografia: 'var(--star)',
@@ -13,7 +13,6 @@ const ACCENT: Record<PackageId, string> = {
 }
 
 export function PackagesSection({ scanResult }: { scanResult: AuditResult | null }) {
-  const [currency, setCurrency] = useState<'USD' | 'BOB'>('USD')
   const cls = useMemo(() => (scanResult ? classify(scanResult) : null), [scanResult])
 
   return (
@@ -101,26 +100,9 @@ export function PackagesSection({ scanResult }: { scanResult: AuditResult | null
           </Reveal>
         )}
 
-        {/* ── Selector de moneda ── */}
-        <Reveal delay={90}>
-          <div className="mt-8 flex items-center justify-center gap-1.5">
-            {(['USD', 'BOB'] as const).map(c => (
-              <button
-                key={c}
-                onClick={() => setCurrency(c)}
-                aria-pressed={currency === c}
-                className="rounded-full px-4 py-1.5 font-mono text-[11px] transition-all"
-                style={{
-                  background: currency === c ? 'oklch(0.8 0.16 305 / 0.14)' : 'transparent',
-                  border: `1px solid ${currency === c ? 'var(--quasar)' : 'var(--border)'}`,
-                  color: currency === c ? 'var(--quasar)' : 'var(--muted-foreground)',
-                }}
-              >
-                {c === 'USD' ? 'USD $' : 'BOB Bs'}
-              </button>
-            ))}
-          </div>
-        </Reveal>
+        {/* Los importes no se muestran todavía: se acuerdan en la conversación,
+            no en la página. Se conserva el alcance de cada paquete, que es lo
+            que ayuda a elegir. */}
 
         {/* ── Paquetes ── */}
         <div className="mt-6 grid gap-5 lg:grid-cols-3">
@@ -155,15 +137,9 @@ export function PackagesSection({ scanResult }: { scanResult: AuditResult | null
                     {p.tagline}
                   </p>
 
-                  {/* Precio */}
-                  <div className="mt-5 flex items-baseline gap-1.5">
-                    <span className="font-mono text-[15px]" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                      {currency === 'USD' ? '$' : 'Bs'}
-                    </span>
-                    <span className="font-display text-4xl font-bold tabular-nums">
-                      {(currency === 'USD' ? p.priceUSD : p.priceBOB).toLocaleString('es-BO')}
-                    </span>
-                  </div>
+                  <p className="mt-5 font-display text-[19px] font-semibold tracking-tight">
+                    Lo conversamos
+                  </p>
                   <p className="mt-0.5 font-mono text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
                     proyecto único · sin suscripción
                   </p>
@@ -296,22 +272,25 @@ export function PackagesSection({ scanResult }: { scanResult: AuditResult | null
             </div>
             <div className="grid gap-px sm:grid-cols-3" style={{ background: 'var(--border)' }}>
               {[
+                // Sin importes: la comparación se sostiene por sí sola en lo que
+                // de verdad separa a las tres opciones, que es quién interpreta
+                // el resultado y con qué conocimiento del mercado.
                 {
                   t: 'Herramienta automática',
-                  p: 'Desde $0',
+                  p: 'Datos sin lectura',
                   d: 'Un informe generado por software. Indica qué está mal, en inglés y sin contexto del negocio. Nadie interpreta el resultado ni establece prioridades.',
                   tone: 'rgba(255,255,255,0.35)',
                 },
                 {
                   t: 'Baral · Radiografía a Quirófano',
-                  p: '$290 – $2.400',
-                  d: 'Escaneo determinista + interpretación con Claude + criterio del equipo. Priorizado por impacto de negocio, en español y con acompañamiento hasta la ejecución.',
+                  p: 'Medición con criterio',
+                  d: 'Escaneo determinista, interpretación con Claude y criterio del equipo. Priorizado por impacto de negocio, en español y con acompañamiento hasta la ejecución.',
                   tone: 'var(--quasar)',
                 },
                 {
                   t: 'Consultora internacional',
-                  p: '$5.000+',
-                  d: 'Profundidad equivalente o mayor, con plazos de semanas, contratos anuales y sin conocimiento del mercado boliviano ni de tu sector local.',
+                  p: 'Profundidad sin contexto',
+                  d: 'Alcance equivalente o mayor, con plazos de semanas, contratos anuales y sin conocimiento del mercado boliviano ni de tu sector local.',
                   tone: 'rgba(255,255,255,0.35)',
                 },
               ].map(c => (

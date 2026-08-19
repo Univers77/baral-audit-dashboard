@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Search, Loader2, ChevronDown, ChevronUp, Clock, Globe, AlertTriangle, CheckCircle2, XCircle, Sparkles, Target, Zap, TrendingUp, ShieldAlert, BarChart2 } from 'lucide-react'
+import { Search, Loader2, ChevronDown, ChevronUp, Clock, AlertTriangle, CheckCircle2, XCircle, Sparkles, Target, Zap, TrendingUp, ShieldAlert, BarChart2 } from 'lucide-react'
 import { LAST_RESULT_KEY, restoreLastResult } from '@/lib/scanner/restore'
 import type { AuditResult } from '@/lib/scanner/types'
 
@@ -153,19 +153,12 @@ export function UrlScanner({ onResult }: { onResult?: (r: AuditResult) => void }
 
         {/* Header */}
         <div className="mb-6 text-center">
-          <div
-            className="glass mb-3 inline-flex items-center gap-2 rounded-full px-4 py-1.5 font-mono text-[11px] tracking-[0.16em]"
-            style={{ border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}
-          >
-            <Globe size={11} />
-            RADIOGRAFÍA DIGITAL · BARAL
-          </div>
           <h2 className="font-display mb-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl text-balance">
-            ¿Su sitio web está trabajando para usted?
+            ¿Tu sitio está trabajando para ti?
           </h2>
           <p className="mx-auto max-w-lg text-[14px] leading-relaxed text-pretty" style={{ color: 'var(--muted-foreground)' }}>
-            Es lo primero que hacemos con cada cliente: una radiografía completa antes de tocar nada.
-            Ingrese su dirección y revisamos juntos qué encontramos.
+            Pega tu dirección y en menos de un minuto verás lo que ve Google, lo que percibe quien
+            entra y qué se te está escapando. Sin registro.
           </p>
         </div>
 
