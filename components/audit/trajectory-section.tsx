@@ -1,7 +1,7 @@
 'use client'
 
 import { Reveal, SectionHeader } from '@/components/cosmos/primitives'
-import { funnelStages, hypotheses, priorityMeta } from '@/lib/audit-data'
+import { funnelStages, priorityMeta } from '@/lib/audit-data'
 import type { AuditResult } from '@/lib/scanner/types'
 import type { GA4Metrics } from '@/lib/ga4/types'
 import { GA4Connect } from '@/components/ga4/ga4-connect'
@@ -162,35 +162,11 @@ export function TrajectorySection({
           )}
         </Reveal>
 
-        {/* Hypotheses */}
-        <div className="mt-16">
-          <Reveal>
-            <div className="text-muted-foreground/60 mb-5 font-mono text-[11px] tracking-[0.18em]">
-              HIPÓTESIS DE CONVERSIÓN · A CONTRASTAR CON DATOS REALES
-            </div>
-          </Reveal>
-          <div className="flex flex-col gap-3">
-            {hypotheses.map((h, i) => (
-              <Reveal key={h.text} delay={i * 100}>
-                <div
-                  className="glass grid items-center gap-4 rounded-2xl p-4 md:grid-cols-[2fr_0.7fr_1.2fr_1fr_auto]"
-                  style={{ border: '1px solid var(--border)' }}
-                >
-                  <p className="text-[14px] font-medium text-pretty">{h.text}</p>
-                  <span className="text-accent font-mono text-[10.5px] tracking-[0.1em]">{h.stage}</span>
-                  <span className="text-muted-foreground text-[12.5px]">{h.method}</span>
-                  <span className="text-muted-foreground text-[12.5px]">{h.metric}</span>
-                  <span
-                    className="rounded-full px-2.5 py-1 font-mono text-[9px] font-bold tracking-wide"
-                    style={{ background: 'oklch(0.85 0.13 88 / 0.1)', color: 'oklch(0.85 0.13 88 / 0.8)', border: '1px solid oklch(0.85 0.13 88 / 0.2)' }}
-                  >
-                    REQUIERE GA4
-                  </span>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
+        {/* Las hipótesis de conversión se retiraron: eran texto fijo de la
+            auditoría manual de baralintegral.com («reparar los contadores
+            animados…») y se mostraban idénticas para cualquier dominio
+            escaneado. Formular hipótesis reales exige datos de comportamiento,
+            así que su lugar natural es el bloque de GA4 de abajo. */}
 
         {/* GA4 live data block */}
         <Reveal delay={120} className="mt-16 block">

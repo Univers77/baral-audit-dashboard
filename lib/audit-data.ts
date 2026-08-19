@@ -624,7 +624,8 @@ export const dataGaps = [
     key: 'g1',
     title: 'Acceso a Google Search Console',
     why: 'Sin GSC no podemos ver que keywords traen trafico real, paginas con errores de indexacion ni datos de Core Web Vitals de usuarios reales.',
-    access: 'Compartir acceso de solo lectura a Search Console de baralintegral.com.',
+    // Sin dominio fijo: este texto se muestra para cualquier sitio escaneado.
+    access: 'Compartir acceso de solo lectura a Search Console del dominio analizado.',
   },
   {
     key: 'g2',

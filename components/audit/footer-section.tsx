@@ -1,6 +1,6 @@
 'use client'
 
-import { site, totalFindings } from '@/lib/audit-data'
+import { site } from '@/lib/audit-data'
 import { CosmicButton, Reveal, SectionHeader, TiltCard } from '@/components/cosmos/primitives'
 import { BaralPlanet } from '@/components/audit/baral-planet'
 import { BaralLogo } from '@/components/brand/baral-logo'
@@ -20,6 +20,18 @@ export function FooterSection({
 }) {
   const [history, setHistory] = useState<ScanHistoryEntry[]>([])
   const { pdfState, downloadPdf } = usePdfDownload(scanResult?.domain)
+
+  // Todo lo que identifica al informe sale del escaneo en curso. Antes venía del
+  // dataset fijo de audit-data, así que el pie atribuía cada análisis a
+  // baralintegral.com y a una fecha de agosto sin importar qué se hubiera medido.
+  const findingCount = scanResult
+    ? scanResult.findings.length + scanResult.compactFindings.length
+    : 0
+  const scanDateLabel = scanResult
+    ? new Date(scanResult.scanDate).toLocaleDateString('es-BO', {
+        day: 'numeric', month: 'short', year: 'numeric',
+      })
+    : ''
 
   useEffect(() => {
     setHistory(getHistory())
@@ -58,7 +70,7 @@ export function FooterSection({
               Fin de la observación
             </p>
             <h2 className="mt-5 text-balance text-4xl font-semibold leading-[1.08] tracking-[-0.02em] text-foreground md:text-5xl">
-              {totalFindings} señales trazadas. Ahora toca <span className="text-gradient-quasar">mover la órbita</span>
+              {findingCount} señales trazadas. Ahora toca <span className="text-gradient-quasar">mover la órbita</span>
               .
             </h2>
             <p className="mx-auto mt-5 max-w-xl text-pretty leading-relaxed text-muted-foreground">
@@ -252,12 +264,14 @@ export function FooterSection({
               aria-hidden="true"
             />
             <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              {site.title} — {site.version}
+              {site.version}
             </p>
           </div>
-          <p className="font-mono text-[11px] tabular-nums text-muted-foreground">
-            {site.url} · {site.pagesAnalyzed} páginas · {site.date}
-          </p>
+          {scanResult ? (
+            <p className="font-mono text-[11px] tabular-nums text-muted-foreground">
+              {scanResult.domain} · 1 página · {scanDateLabel}
+            </p>
+          ) : null}
         </div>
       </footer>
     </>
