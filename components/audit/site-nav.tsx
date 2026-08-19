@@ -58,8 +58,12 @@ export function SiteNav() {
     <header className="fixed top-0 right-0 left-0 z-[9999]">
       <nav
         aria-label="Navegación de la auditoría"
+        // Rejilla de tres columnas en lugar de justify-between: así el menú
+        // queda centrado por posición y no por equilibrio entre hermanos. Con
+        // justify-between, al retirar el bloque de la derecha el menú se iba al
+        // extremo y se solapaba con el titular.
         className={cn(
-          'flex items-center justify-between gap-4 px-5 transition-all duration-500 sm:px-8',
+          'grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-5 transition-all duration-500 sm:px-8',
           condensed ? 'py-2.5' : 'py-4',
         )}
         style={{
@@ -71,7 +75,7 @@ export function SiteNav() {
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="group flex shrink-0 items-center gap-2"
+          className="group flex shrink-0 items-center gap-2 justify-self-start"
           aria-label="Volver al inicio"
         >
           {/* Marca oficial. El arte ya trae su propio halo — sin sombras extra. */}
@@ -79,7 +83,7 @@ export function SiteNav() {
           <span className="hidden sm:block font-semibold text-[13px] tracking-widest leading-none">BARAL</span>
         </button>
 
-        <div className="glass hidden items-center gap-1 rounded-full p-1 md:flex" style={{ borderWidth: 1 }}>
+        <div className="glass col-start-2 hidden items-center gap-1 justify-self-center rounded-full p-1 md:flex" style={{ borderWidth: 1 }}>
           {SECTIONS.map((s) => {
             const isActive = active === s.id
             return (

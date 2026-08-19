@@ -148,7 +148,10 @@ export function UrlScanner({ onResult }: { onResult?: (r: AuditResult) => void }
   }
 
   return (
-    <section id="scanner" className="relative px-5 pt-8 pb-12 sm:px-8">
+    // El encabezado es fijo: este espacio superior lo despeja. Antes lo
+    // absorbía el badge que ocupaba esa franja, y al retirarlo el titular
+    // quedó por debajo de la barra.
+    <section id="scanner" className="relative px-5 pt-24 pb-12 sm:px-8 sm:pt-28">
       <div className="mx-auto max-w-4xl">
 
         {/* Header */}
