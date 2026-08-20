@@ -84,7 +84,7 @@ interface IsolatedStage {
  * el CSS de la aplicación se ve igual y no queda ningún color que no se pueda
  * interpretar.
  */
-function mountIsolated(source: HTMLElement): IsolatedStage {
+async function mountIsolated(source: HTMLElement): Promise<IsolatedStage> {
   const frame = document.createElement('iframe')
   frame.setAttribute('aria-hidden', 'true')
   frame.style.cssText = `position:fixed;left:-10000px;top:0;width:${A4_WIDTH_PX}px;height:${A4_HEIGHT_PX}px;border:0;visibility:hidden;`
@@ -109,6 +109,22 @@ function mountIsolated(source: HTMLElement): IsolatedStage {
   copy.style.width = `${A4_WIDTH_PX}px`
   copy.style.maxWidth = `${A4_WIDTH_PX}px`
   doc.body.appendChild(copy)
+
+  // Esperar a que las imágenes ocupen su alto definitivo. Sin esto, los puntos
+  // de corte se calculaban sobre una maquetación más corta que la que luego se
+  // captura: los saltos caían desplazados y partían el texto por la mitad de
+  // una línea.
+  const images = Array.from(copy.querySelectorAll('img'))
+  await Promise.all(images.map(img => (
+    img.complete && img.naturalHeight > 0
+      ? Promise.resolve()
+      : new Promise<void>(resolve => {
+          img.addEventListener('load', () => resolve(), { once: true })
+          img.addEventListener('error', () => resolve(), { once: true })
+        })
+  )))
+  // Dos fotogramas para que el navegador aplique la maquetación resultante.
+  await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
 
   return { root: copy, destroy: () => frame.remove() }
 }
@@ -175,7 +191,8 @@ export async function generateAuditPdf(
   onProgress?.('Preparando imágenes…')
   const restoreImages = await inlineImages(rootEl)
 
-  const stage = mountIsolated(rootEl)
+  onProgress?.('Componiendo el documento…')
+  const stage = await mountIsolated(rootEl)
   restoreImages()
 
   const sections = Array.from(stage.root.querySelectorAll(':scope > section')) as HTMLElement[]
@@ -230,12 +247,13 @@ export async function generateAuditPdf(
         let availablePx = Math.floor((PDF_HEIGHT_MM - cursorMm) * pxPerMm)
         let sliceHeightPx = sliceHeight(renderedPx, availablePx, canvas.height, breaks)
 
-        // Si el hueco obliga a cortar por mitad de un bloque y todavía no
-        // estamos al principio de la hoja, es mejor bajarlo entero a la
-        // siguiente que partirlo. En hoja limpia sí se acepta el corte: un
-        // bloque más alto que una página no cabe de otra forma.
+        // Bajar el bloque entero a la hoja siguiente en lugar de partirlo, pero
+        // solo cuando salga barato: si aún queda más del 60 % de la hoja, saltar
+        // desperdiciaría más de lo que arregla, y una hoja limpia tampoco
+        // evitaría el corte de un bloque más alto que una página.
+        const restanteMm = PDF_HEIGHT_MM - cursorMm
         const cortaBloque = renderedPx + sliceHeightPx < canvas.height && !breaks.includes(renderedPx + sliceHeightPx)
-        if (cortaBloque && cursorMm > 0) {
+        if (cortaBloque && cursorMm > 0 && restanteMm < PDF_HEIGHT_MM * 0.6) {
           openPage()
           availablePx = Math.floor(PDF_HEIGHT_MM * pxPerMm)
           sliceHeightPx = sliceHeight(renderedPx, availablePx, canvas.height, breaks)

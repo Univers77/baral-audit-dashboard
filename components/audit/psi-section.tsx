@@ -2,6 +2,7 @@
 
 import { Reveal, SectionHeader } from '@/components/cosmos/primitives'
 import { formatCwv } from '@/lib/psi/parse'
+import { attemptLabel, decideRetry, MAX_ATTEMPTS, type PsiFailure } from '@/lib/psi/retry'
 import { isPsiError, type CwvVerdict, type PsiResult, type Strategy } from '@/lib/psi/types'
 import type { AuditResult } from '@/lib/scanner/types'
 import { AlertTriangle, Film, Gauge, Loader2, Monitor, RefreshCw, Smartphone, Users, Zap } from 'lucide-react'
@@ -81,30 +82,57 @@ export function PsiSection({
   const [data, setData] = useState<Record<Strategy, PsiResult | null>>({ mobile: null, desktop: null })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<{ msg: string; hint?: string; quota?: boolean } | null>(null)
+  /** Qué está ocurriendo ahora mismo: intento en curso o espera antes de reintentar. */
+  const [statusMsg, setStatusMsg] = useState<string | null>(null)
   const [openMetric, setOpenMetric] = useState<string | null>(null)
 
   const url = scanResult?.url
 
+  /**
+   * La API de Google falla a menudo por saturación o por el límite por minuto,
+   * y ambas cosas se resuelven esperando. Antes un fallo así dejaba al usuario
+   * con un error y un botón; ahora se reintenta según la política de
+   * lib/psi/retry, anunciando cada intento para que no parezca colgado.
+   */
   const run = useCallback(async (s: Strategy, force = false) => {
     if (!url) return
     if (data[s] && !force) return
-    setLoading(true)
     setError(null)
+    setLoading(true)
+
     try {
-      const res = await fetch(`/api/psi?url=${encodeURIComponent(url)}&strategy=${s}`)
-      const json = await res.json()
-      if (!res.ok || isPsiError(json)) {
-        setError({ msg: json.error ?? 'No se pudo consultar PageSpeed', hint: json.hint, quota: json.quotaExceeded })
-      } else {
-        setData(prev => ({ ...prev, [s]: json }))
-        // Móvil es la estrategia que Google usa para indexar: es la que viaja
-        // al informe.
-        if (s === 'mobile') onPsiResult?.(json)
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        setStatusMsg(attemptLabel(attempt))
+
+        let failure: PsiFailure | null = null
+        try {
+          const res = await fetch(`/api/psi?url=${encodeURIComponent(url)}&strategy=${s}`)
+          const json = await res.json()
+
+          if (res.ok && !isPsiError(json)) {
+            setData(prev => ({ ...prev, [s]: json }))
+            // Móvil es la estrategia que Google usa para indexar: es la que
+            // viaja al informe.
+            if (s === 'mobile') onPsiResult?.(json)
+            return
+          }
+          failure = { status: res.status, quota: json?.quotaExceeded === true }
+          setError({ msg: json?.error ?? 'No se pudo consultar PageSpeed', hint: json?.hint, quota: json?.quotaExceeded })
+        } catch (e) {
+          failure = { network: true }
+          setError({ msg: e instanceof Error ? e.message : 'Error de red' })
+        }
+
+        const decision = decideRetry(attempt, failure)
+        if (!decision.retry) return
+
+        setStatusMsg(decision.reason)
+        await new Promise(resolve => setTimeout(resolve, decision.delayMs))
+        setError(null)
       }
-    } catch (e) {
-      setError({ msg: e instanceof Error ? e.message : 'Error de red' })
     } finally {
       setLoading(false)
+      setStatusMsg(null)
     }
   }, [url, data, onPsiResult])
 
@@ -184,8 +212,10 @@ export function PsiSection({
           <Reveal delay={70}>
             <div className="glass mt-5 flex items-center gap-3 rounded-2xl p-6" style={{ border: '1px solid var(--border)' }}>
               <Loader2 className="size-4 animate-spin" style={{ color: 'var(--quasar)' }} aria-hidden />
-              <div>
-                <p className="text-[13.5px]">Google está cargando el sitio en un dispositivo emulado…</p>
+              <div aria-live="polite">
+                <p className="text-[13.5px]">
+                  {statusMsg ?? 'Google está cargando el sitio en un dispositivo emulado…'}
+                </p>
                 <p className="mt-0.5 font-mono text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
                   Suele tardar entre 15 y 40 segundos.
                 </p>
