@@ -1,5 +1,6 @@
 'use client'
 
+import { CompetitiveInsight } from '@/components/audit/competitive-insight'
 import { Reveal, SectionHeader } from '@/components/cosmos/primitives'
 import {
   COMPARABLE_LABELS,
@@ -9,9 +10,10 @@ import {
   metricsFor,
   type Competitor,
 } from '@/lib/benchmarks'
+import type { Subject } from '@/lib/competitive/analysis'
 import type { AuditResult } from '@/lib/scanner/types'
 import { Loader2, Plus, Search, Trash2, X, Info } from 'lucide-react'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 const MAX_COMPETIDORES = 3
 
@@ -20,11 +22,32 @@ function normalizeDomain(input: string): string {
   return s.toLowerCase()
 }
 
-export function CompetitiveSection({ scanResult }: { scanResult: AuditResult | null }) {
+export function CompetitiveSection({
+  scanResult,
+  onRivalsChange,
+}: {
+  scanResult: AuditResult | null
+  /**
+   * Eleva los competidores ya medidos para que el informe descargable los
+   * incluya. Sin esto, el análisis competitivo vivía solo en pantalla y el PDF
+   * que recibía el cliente no lo mencionaba.
+   */
+  onRivalsChange?: (rivals: Subject[]) => void
+}) {
   const [input, setInput] = useState('')
   const [competitors, setCompetitors] = useState<Competitor[]>([])
   const [openMetric, setOpenMetric] = useState<string | null>(null)
   const esRefs = useRef<Record<string, EventSource>>({})
+
+  // Se avisa cada vez que cambia el conjunto de competidores medidos, para que
+  // el informe descargable se mantenga al día con lo que hay en pantalla.
+  useEffect(() => {
+    onRivalsChange?.(
+      competitors
+        .filter(c => c.status === 'listo' && c.result)
+        .map(c => ({ domain: c.domain, result: c.result! })),
+    )
+  }, [competitors, onRivalsChange])
 
   const scanCompetitor = useCallback((url: string) => {
     const domain = normalizeDomain(url)
@@ -317,6 +340,15 @@ export function CompetitiveSection({ scanResult }: { scanResult: AuditResult | n
                   Todos los sitios se midieron con el mismo motor el {new Date(scanResult.scanDate).toLocaleDateString('es-BO')}.
                   Son datos observados en el HTML servido, no estimaciones.
                 </p>
+
+                {/* La tabla dice quién gana cada métrica; esto dice qué hacer
+                    con esa información, que es la pregunta que decide gasto. */}
+                <div className="mt-8 border-t pt-7" style={{ borderColor: 'var(--border)' }}>
+                  <CompetitiveInsight
+                    own={scanResult}
+                    rivals={listos.map(c => ({ domain: c.domain, result: c.result! }))}
+                  />
+                </div>
               </div>
             ) : (
               competitors.length === 0 && (

@@ -1,5 +1,7 @@
 'use client'
 
+import { CompetitiveInsight } from './competitive-insight'
+import type { Subject } from '@/lib/competitive/analysis'
 import { formatCwv } from '@/lib/psi/parse'
 import {
   BotGrid, CoverageBars, CwvBars, PillarBars, PriorityBar, RC, ScoreDonut,
@@ -114,7 +116,16 @@ function cwvRatio(value: number, good: number, poor: number): number {
   return Math.min(1, 0.7 + ((value - poor) / poor) * 0.3)
 }
 
-export function ExecutiveReport({ scanResult, ga4Data }: { scanResult: AuditResult | null; ga4Data?: GA4Metrics | null }) {
+export function ExecutiveReport({
+  scanResult,
+  ga4Data,
+  rivals = [],
+}: {
+  scanResult: AuditResult | null
+  ga4Data?: GA4Metrics | null
+  /** competidores medidos en pantalla; el informe los incorpora si los hay */
+  rivals?: Subject[]
+}) {
   if (!scanResult) return null
   const r = scanResult
   const score = r.scores?.overall ?? 0
@@ -569,6 +580,23 @@ export function ExecutiveReport({ scanResult, ga4Data }: { scanResult: AuditResu
               ))}
             </tbody>
           </table>
+        </section>
+      )}
+
+      {/* ── COMPETENCIA ──
+          Solo aparece si se midieron competidores en pantalla: el informe
+          refleja lo que hay, no deja un apartado vacío. */}
+      {rivals.length > 0 && (
+        <section style={page}>
+          <PageHeader domain={r.domain} />
+          <Eyebrow>POSICIÓN COMPETITIVA</Eyebrow>
+          <H2>Frente a quién compites</H2>
+          <Dek>
+            Cada competidor se midió en vivo con el mismo motor y los mismos criterios, de modo que
+            la comparación es pareja y verificable. Lo que sigue no es quién gana cada métrica, sino
+            dónde conviene invertir y dónde no.
+          </Dek>
+          <CompetitiveInsight own={r} rivals={rivals} compact />
         </section>
       )}
 

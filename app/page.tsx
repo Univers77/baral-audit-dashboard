@@ -24,6 +24,7 @@ import { MethodologySection } from '@/components/audit/methodology-section'
 import { PackagesSection } from '@/components/audit/packages-section'
 import { UrlScanner } from '@/components/scanner/url-scanner'
 import type { Priority } from '@/lib/audit-data'
+import type { Subject } from '@/lib/competitive/analysis'
 import { restoreLastResult } from '@/lib/scanner/restore'
 import type { AuditResult } from '@/lib/scanner/types'
 import type { GA4Metrics } from '@/lib/ga4/types'
@@ -36,6 +37,7 @@ export default function Page() {
   const [scanResult, setScanResult] = useState<AuditResult | null>(null)
   const [ga4Data, setGa4Data] = useState<GA4Metrics | null>(null)
   const [psi, setPsi] = useState<PsiResult | null>(null)
+  const [rivals, setRivals] = useState<Subject[]>([])
 
   useEffect(() => {
     setScanResult(restoreLastResult())
@@ -92,7 +94,7 @@ export default function Page() {
           <PsiSection scanResult={scanResult} onPsiResult={setPsi} />
           <AgentReadinessSection scanResult={scanResult} />
           <EvidenceSection scanResult={scanResult} />
-          <CompetitiveSection scanResult={scanResult} />
+          <CompetitiveSection scanResult={scanResult} onRivalsChange={setRivals} />
           <TrajectorySection
             scanResult={scanResult}
             onFocusFinding={focusFinding}
@@ -108,7 +110,7 @@ export default function Page() {
       </div>
 
       {/* Documento imprimible — oculto en pantalla, visible solo en window.print() */}
-      <ExecutiveReport scanResult={reportResult} ga4Data={ga4Data} />
+      <ExecutiveReport scanResult={reportResult} ga4Data={ga4Data} rivals={rivals} />
     </div>
   )
 }

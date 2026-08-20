@@ -246,6 +246,123 @@ export function CoverageBars({ pillars }: { pillars: { label: string; run: numbe
   )
 }
 
+/** Paleta para distinguir competidores. El sitio propio va siempre en acento. */
+export const RIVAL_COLORS = ['#64748B', '#94A3B8', '#CBD5E1'] as const
+
+export interface ComparisonRow {
+  label: string
+  /** primer valor = sitio propio */
+  values: { domain: string; value: number; display: string }[]
+  lowerIsBetter: boolean
+  /** valor objetivo en la misma escala, si lo hay */
+  target?: number
+  max: number
+}
+
+/**
+ * Comparación métrica a métrica contra los competidores.
+ *
+ * Barras agrupadas y no un radar: con escalas distintas por métrica —milisegundos,
+ * palabras, porcentajes— un radar obligaría a normalizar y haría perder la
+ * magnitud real, que es justo lo que permite decidir si una distancia importa.
+ */
+export function CompetitiveBars({ rows }: { rows: ComparisonRow[] }) {
+  const labelW = 132
+  const barW = 300
+  const rowGap = 8
+  const barH = 11
+  const blockH = (n: number) => n * (barH + 3) + rowGap + 14
+
+  let y = 0
+  const heights = rows.map(r => blockH(r.values.length))
+  const total = heights.reduce((a, b) => a + b, 0) + 6
+
+  return (
+    <svg width="100%" viewBox={`0 0 560 ${total}`} role="img" aria-label="Comparación con competidores">
+      {rows.map((row, ri) => {
+        const top = y
+        y += heights[ri]
+        return (
+          <g key={row.label}>
+            <text x="0" y={top + 10} fontFamily={SANS} fontSize="11.5" fontWeight="700" fill={RC.ink}>
+              {row.label}
+            </text>
+            {row.target !== undefined && row.max > 0 && (
+              <line
+                x1={labelW + (barW * Math.min(1, row.target / row.max))} y1={top + 2}
+                x2={labelW + (barW * Math.min(1, row.target / row.max))} y2={top + heights[ri] - 12}
+                stroke={RC.faint} strokeWidth="1" strokeDasharray="3 3"
+              />
+            )}
+            {row.values.map((v, vi) => {
+              const by = top + 14 + vi * (barH + 3)
+              const w = row.max > 0 ? Math.max(3, (barW * Math.min(1, v.value / row.max))) : 3
+              const color = vi === 0 ? RC.quasarLight : RIVAL_COLORS[(vi - 1) % RIVAL_COLORS.length]
+              return (
+                <g key={v.domain}>
+                  <text x={labelW - 8} y={by + barH - 2} textAnchor="end" fontFamily={MONO} fontSize="8.5"
+                    fill={vi === 0 ? RC.quasarLight : RC.faint}>
+                    {v.domain.length > 18 ? v.domain.slice(0, 17) + '…' : v.domain}
+                  </text>
+                  <rect x={labelW} y={by} width={barW} height={barH} rx={barH / 2} fill={RC.surfaceAlt} />
+                  <rect x={labelW} y={by} width={w} height={barH} rx={barH / 2} fill={color} />
+                  <text x={labelW + barW + 10} y={by + barH - 1} fontFamily={MONO} fontSize="9.5"
+                    fontWeight={vi === 0 ? '700' : '400'} fill={vi === 0 ? RC.ink : RC.muted}>
+                    {v.display}
+                  </text>
+                </g>
+              )
+            })}
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+export const STANCE_COLOR: Record<string, string> = {
+  'territorio-libre': RC.quasarLight,
+  desventaja: RC.pulsar,
+  ventaja: RC.nova,
+  paridad: RC.faint,
+}
+
+/** Reparto de las métricas entre las cuatro posiciones competitivas. */
+export function StanceSummary({ counts }: { counts: { key: string; label: string; n: number }[] }) {
+  const total = counts.reduce((a, c) => a + c.n, 0)
+  if (total === 0) return null
+  const W = 560
+  let x = 0
+
+  return (
+    <svg width="100%" viewBox="0 0 560 64" role="img" aria-label="Reparto de posiciones competitivas">
+      {counts.filter(c => c.n > 0).map(c => {
+        const w = (W * c.n) / total
+        const el = (
+          <g key={c.key}>
+            <rect x={x} y="0" width={Math.max(2, w - 2)} height="22" rx="4" fill={STANCE_COLOR[c.key] ?? RC.faint} />
+            {w > 40 && (
+              <text x={x + w / 2 - 1} y="15" textAnchor="middle" fontFamily={MONO} fontSize="11" fontWeight="700" fill={RC.void}>
+                {c.n}
+              </text>
+            )}
+          </g>
+        )
+        x += w
+        return el
+      })}
+      {counts.filter(c => c.n > 0).map((c, i) => (
+        <g key={`l-${c.key}`}>
+          <rect x={i * 140} y="36" width="9" height="9" rx="2" fill={STANCE_COLOR[c.key] ?? RC.faint} />
+          <text x={i * 140 + 15} y="44" fontFamily={MONO} fontSize="9.5" fill={RC.muted}>
+            {c.label} · {c.n}
+          </text>
+        </g>
+      ))}
+    </svg>
+  )
+}
+
 /** Matriz de acceso de rastreadores de IA: una celda por agente. */
 export function BotGrid({ bots }: { bots: { name: string; access: string }[] }) {
   const cols = 2
