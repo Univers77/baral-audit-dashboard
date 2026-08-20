@@ -14,23 +14,32 @@
  *    declarada.
  */
 
-// ── Paleta del informe: la identidad de la app, en hexadecimal ──
+/**
+ * Paleta del informe.
+ *
+ * Grafito neutro en lugar del azul muy saturado anterior: sobre papel y en
+ * pantalla resulta menos denso y envejece mejor. Los grises de texto se
+ * subieron hasta superar 4,5:1 sobre el fondo — el gris tenue anterior se
+ * quedaba en torno a 3:1 y se perdía al imprimir.
+ */
 export const RC = {
-  void: '#0A0B14',
-  surface: '#12141F',
-  surfaceAlt: '#1A1D2E',
-  border: '#272B40',
-  borderSoft: '#1E2233',
-  ink: '#EEF0F8',
-  inkSoft: '#C3C8DC',
-  muted: '#8A90A8',
-  faint: '#5A607A',
-  quasar: '#7C3AED',
-  quasarLight: '#A78BFA',
-  nova: '#22C55E',
-  solar: '#EAB308',
-  ember: '#F97316',
-  pulsar: '#EF4444',
+  void: '#12141A',
+  surface: '#191C25',
+  surfaceAlt: '#212533',
+  border: '#2E3342',
+  borderSoft: '#242836',
+  ink: '#F4F6FA',        // 16,7:1
+  inkSoft: '#D5D9E4',    // 12,9:1
+  muted: '#9BA1B2',      //  7,0:1
+  // Se calibró contra el fondo de tarjeta, que es más claro que el de página:
+  // ahí es donde el gris tenue anterior caía a 3,9:1 y dejaba de leerse.
+  faint: '#838A9E',      //  5,3:1 sobre página · 4,9:1 sobre tarjeta
+  quasar: '#8B5CF6',
+  quasarLight: '#C4B5FD',
+  nova: '#34D399',
+  solar: '#FBBF24',
+  ember: '#FB923C',
+  pulsar: '#F87171',
 } as const
 
 const SANS = 'Arial, Helvetica, sans-serif'
@@ -188,10 +197,10 @@ export function CwvBars({ rows }: { rows: CwvRow[] }) {
             <text x="0" y={y + 14} fontFamily={SANS} fontSize="11.5" fontWeight="600" fill={RC.inkSoft}>
               {row.label}
             </text>
-            {/* Zonas: bueno / mejorable / deficiente */}
-            <rect x={barX} y={y + 4} width={barW * 0.45} height="12" fill="#14351F" />
-            <rect x={barX + barW * 0.45} y={y + 4} width={barW * 0.25} height="12" fill="#3A2E10" />
-            <rect x={barX + barW * 0.7} y={y + 4} width={barW * 0.3} height="12" fill="#3A1A1D" />
+            {/* Zonas: bueno / mejorable / deficiente, apenas insinuadas */}
+            <rect x={barX} y={y + 4} width={barW * 0.45} height="12" fill="#1B3229" />
+            <rect x={barX + barW * 0.45} y={y + 4} width={barW * 0.25} height="12" fill="#332C1B" />
+            <rect x={barX + barW * 0.7} y={y + 4} width={barW * 0.3} height="12" fill="#33212A" />
             {/* Marcador del valor medido */}
             <rect x={px - 1.5} y={y} width="3" height="20" rx="1.5" fill={color} />
             <text x={barX + barW + 12} y={y + 14} fontFamily={MONO} fontSize="11" fontWeight="700" fill={color}>

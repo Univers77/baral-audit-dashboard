@@ -19,7 +19,7 @@ const PDF_HEIGHT_MM = 297
  */
 const A4_HEIGHT_PX = Math.round((A4_WIDTH_PX * PDF_HEIGHT_MM) / PDF_WIDTH_MM)
 /** Fondo del informe. Debe coincidir con RC.void de report-charts. */
-const REPORT_BG = '#0A0B14'
+const REPORT_BG = '#12141A'
 
 async function fetchAsDataUri(absoluteSrc: string): Promise<string> {
   try {
@@ -214,6 +214,11 @@ export async function generateAuditPdf(
 
         const sliceHeightMm = (sliceHeightPx * PDF_WIDTH_MM) / canvas.width
         if (!firstPage) pdf.addPage()
+        // La hoja se pinta entera antes de colocar la captura. jsPDF crea las
+        // páginas en blanco, así que toda sección que no llegaba al borde
+        // inferior dejaba una franja blanca bajo un documento oscuro.
+        pdf.setFillColor(REPORT_BG)
+        pdf.rect(0, 0, PDF_WIDTH_MM, PDF_HEIGHT_MM, 'F')
         pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, PDF_WIDTH_MM, sliceHeightMm)
         firstPage = false
         renderedPx += sliceHeightPx

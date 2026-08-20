@@ -417,7 +417,9 @@ export function ExecutiveReport({ scanResult, ga4Data }: { scanResult: AuditResu
                 {['Nivel', 'Área', 'Qué se encontró', 'Esfuerzo'].map(h => (
                   <th key={h} style={{
                     padding: '7px 9px', fontFamily: MONO, fontSize: 9, letterSpacing: 1,
-                    color: RC.faint, background: RC.surfaceAlt, fontWeight: 700,
+                    // muted y no faint: la cabecera va sobre el fondo más claro
+                    // del documento, donde el gris tenue se queda corto.
+                    color: RC.muted, background: RC.surfaceAlt, fontWeight: 700,
                   }}>{h.toUpperCase()}</th>
                 ))}
               </tr>
