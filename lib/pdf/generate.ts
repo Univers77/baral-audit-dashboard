@@ -18,6 +18,8 @@ const PDF_HEIGHT_MM = 297
  * PDF salía con 17 en lugar de 10.
  */
 const A4_HEIGHT_PX = Math.round((A4_WIDTH_PX * PDF_HEIGHT_MM) / PDF_WIDTH_MM)
+/** Espacio mínimo que debe quedar en la hoja para empezar un bloque nuevo. */
+const MIN_BLOCK_MM = 45
 /** Fondo del informe. Debe coincidir con RC.void de report-charts. */
 const REPORT_BG = '#12141A'
 
@@ -183,28 +185,62 @@ export async function generateAuditPdf(
   }
 
   const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true })
-  let firstPage = true
+  let cursorMm = 0
+  let started = false
+
+  /**
+   * Abre una hoja nueva y la pinta entera. jsPDF las crea en blanco, así que
+   * sin este relleno cualquier zona sin cubrir aparecía como franja blanca
+   * bajo un documento oscuro.
+   */
+  const openPage = () => {
+    if (started) pdf.addPage()
+    pdf.setFillColor(REPORT_BG)
+    pdf.rect(0, 0, PDF_WIDTH_MM, PDF_HEIGHT_MM, 'F')
+    cursorMm = 0
+    started = true
+  }
 
   try {
+    openPage()
+
     for (let i = 0; i < sections.length; i++) {
-      onProgress?.(`Generando página ${i + 1} de ${sections.length}…`)
+      onProgress?.(`Componiendo ${i + 1} de ${sections.length}…`)
       const canvas = await html2canvas(sections[i], {
         scale: 2,
         useCORS: true,
-        // El informe usa la identidad oscura de la aplicación. Con un fondo
-        // blanco forzado, cualquier zona sin pintar dejaba franjas claras entre
-        // secciones.
         backgroundColor: REPORT_BG,
         windowWidth: A4_WIDTH_PX,
       })
 
-      const pageHeightPx = Math.floor((PDF_HEIGHT_MM * canvas.width) / PDF_WIDTH_MM)
+      const pxPerMm = canvas.width / PDF_WIDTH_MM
       const scale = canvas.width / sections[i].getBoundingClientRect().width
       const breaks = safeBreakOffsets(sections[i], scale)
-      let renderedPx = 0
 
+      // La portada está compuesta para ocupar una hoja entera; lo que sigue
+      // arranca en limpio. El resto fluye: una sección continúa en el hueco que
+      // deje la anterior en lugar de forzar hoja nueva, que era lo que dejaba
+      // páginas medio vacías.
+      if (i === 1) openPage()
+
+      let renderedPx = 0
       while (renderedPx < canvas.height) {
-        const sliceHeightPx = sliceHeight(renderedPx, pageHeightPx, canvas.height, breaks)
+        if (PDF_HEIGHT_MM - cursorMm < MIN_BLOCK_MM) openPage()
+
+        let availablePx = Math.floor((PDF_HEIGHT_MM - cursorMm) * pxPerMm)
+        let sliceHeightPx = sliceHeight(renderedPx, availablePx, canvas.height, breaks)
+
+        // Si el hueco obliga a cortar por mitad de un bloque y todavía no
+        // estamos al principio de la hoja, es mejor bajarlo entero a la
+        // siguiente que partirlo. En hoja limpia sí se acepta el corte: un
+        // bloque más alto que una página no cabe de otra forma.
+        const cortaBloque = renderedPx + sliceHeightPx < canvas.height && !breaks.includes(renderedPx + sliceHeightPx)
+        if (cortaBloque && cursorMm > 0) {
+          openPage()
+          availablePx = Math.floor(PDF_HEIGHT_MM * pxPerMm)
+          sliceHeightPx = sliceHeight(renderedPx, availablePx, canvas.height, breaks)
+        }
+
         const slice = document.createElement('canvas')
         slice.width = canvas.width
         slice.height = sliceHeightPx
@@ -212,15 +248,9 @@ export async function generateAuditPdf(
         if (!ctx) throw new Error('No se pudo preparar el lienzo de captura')
         ctx.drawImage(canvas, 0, renderedPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx)
 
-        const sliceHeightMm = (sliceHeightPx * PDF_WIDTH_MM) / canvas.width
-        if (!firstPage) pdf.addPage()
-        // La hoja se pinta entera antes de colocar la captura. jsPDF crea las
-        // páginas en blanco, así que toda sección que no llegaba al borde
-        // inferior dejaba una franja blanca bajo un documento oscuro.
-        pdf.setFillColor(REPORT_BG)
-        pdf.rect(0, 0, PDF_WIDTH_MM, PDF_HEIGHT_MM, 'F')
-        pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, PDF_WIDTH_MM, sliceHeightMm)
-        firstPage = false
+        const sliceHeightMm = sliceHeightPx / pxPerMm
+        pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', 0, cursorMm, PDF_WIDTH_MM, sliceHeightMm)
+        cursorMm += sliceHeightMm
         renderedPx += sliceHeightPx
       }
     }

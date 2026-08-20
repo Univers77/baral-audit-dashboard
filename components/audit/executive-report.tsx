@@ -626,8 +626,10 @@ export function ExecutiveReport({ scanResult, ga4Data }: { scanResult: AuditResu
         </section>
       )}
 
-      {/* ── CIERRE ── */}
-      <section style={{ ...page, breakAfter: 'auto', minHeight: '55vh', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+      {/* ── CIERRE ──
+          Sin minHeight: con el flujo continuo la sección ocupa lo que necesita
+          y el hueco que dejaba antes se aprovecha para lo que venga. */}
+      <section style={{ ...page, breakAfter: 'auto' }}>
         <div>
           <PageHeader domain={r.domain} />
           <Eyebrow>A PARTIR DE AQUÍ</Eyebrow>
