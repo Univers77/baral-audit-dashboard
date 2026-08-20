@@ -65,7 +65,7 @@ function analysisValue(m: MetricAnalysis, r: AuditResult): number {
 function MetricCard({ m }: { m: MetricAnalysis }) {
   const color = STANCE_COLOR[m.stance] ?? RC.faint
   return (
-    <div style={{
+    <div data-break style={{
       background: RC.surface, border: `1px solid ${RC.borderSoft}`, borderLeft: `3px solid ${color}`,
       borderRadius: 6, padding: '12px 14px', breakInside: 'avoid',
     }}>

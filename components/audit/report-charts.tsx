@@ -269,54 +269,53 @@ export interface ComparisonRow {
 export function CompetitiveBars({ rows }: { rows: ComparisonRow[] }) {
   const labelW = 132
   const barW = 300
-  const rowGap = 8
   const barH = 11
-  const blockH = (n: number) => n * (barH + 3) + rowGap + 14
 
-  let y = 0
-  const heights = rows.map(r => blockH(r.values.length))
-  const total = heights.reduce((a, b) => a + b, 0) + 6
-
+  // Un SVG por métrica y no uno solo con todas dentro. Un bloque único más alto
+  // que una página no ofrece ningún punto donde cortar, así que el salto caía
+  // por mitad de una barra. Separados, cada métrica es un límite válido y se
+  // marca con data-break para que la paginación del PDF lo reconozca.
   return (
-    <svg width="100%" viewBox={`0 0 560 ${total}`} role="img" aria-label="Comparación con competidores">
-      {rows.map((row, ri) => {
-        const top = y
-        y += heights[ri]
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {rows.map(row => {
+        const h = row.values.length * (barH + 3) + 18
+        const targetX = row.target !== undefined && row.max > 0
+          ? labelW + barW * Math.min(1, row.target / row.max)
+          : null
+
         return (
-          <g key={row.label}>
-            <text x="0" y={top + 10} fontFamily={SANS} fontSize="11.5" fontWeight="700" fill={RC.ink}>
-              {row.label}
-            </text>
-            {row.target !== undefined && row.max > 0 && (
-              <line
-                x1={labelW + (barW * Math.min(1, row.target / row.max))} y1={top + 2}
-                x2={labelW + (barW * Math.min(1, row.target / row.max))} y2={top + heights[ri] - 12}
-                stroke={RC.faint} strokeWidth="1" strokeDasharray="3 3"
-              />
-            )}
-            {row.values.map((v, vi) => {
-              const by = top + 14 + vi * (barH + 3)
-              const w = row.max > 0 ? Math.max(3, (barW * Math.min(1, v.value / row.max))) : 3
-              const color = vi === 0 ? RC.quasarLight : RIVAL_COLORS[(vi - 1) % RIVAL_COLORS.length]
-              return (
-                <g key={v.domain}>
-                  <text x={labelW - 8} y={by + barH - 2} textAnchor="end" fontFamily={MONO} fontSize="8.5"
-                    fill={vi === 0 ? RC.quasarLight : RC.faint}>
-                    {v.domain.length > 18 ? v.domain.slice(0, 17) + '…' : v.domain}
-                  </text>
-                  <rect x={labelW} y={by} width={barW} height={barH} rx={barH / 2} fill={RC.surfaceAlt} />
-                  <rect x={labelW} y={by} width={w} height={barH} rx={barH / 2} fill={color} />
-                  <text x={labelW + barW + 10} y={by + barH - 1} fontFamily={MONO} fontSize="9.5"
-                    fontWeight={vi === 0 ? '700' : '400'} fill={vi === 0 ? RC.ink : RC.muted}>
-                    {v.display}
-                  </text>
-                </g>
-              )
-            })}
-          </g>
+          <div key={row.label} data-break style={{ breakInside: 'avoid' }}>
+            <svg width="100%" viewBox={`0 0 560 ${h}`} role="img" aria-label={`Comparación · ${row.label}`}>
+              <text x="0" y="10" fontFamily={SANS} fontSize="11.5" fontWeight="700" fill={RC.ink}>
+                {row.label}
+              </text>
+              {targetX !== null && (
+                <line x1={targetX} y1="2" x2={targetX} y2={h - 4} stroke={RC.faint} strokeWidth="1" strokeDasharray="3 3" />
+              )}
+              {row.values.map((v, vi) => {
+                const by = 14 + vi * (barH + 3)
+                const w = row.max > 0 ? Math.max(3, barW * Math.min(1, v.value / row.max)) : 3
+                const color = vi === 0 ? RC.quasarLight : RIVAL_COLORS[(vi - 1) % RIVAL_COLORS.length]
+                return (
+                  <g key={v.domain}>
+                    <text x={labelW - 8} y={by + barH - 2} textAnchor="end" fontFamily={MONO} fontSize="8.5"
+                      fill={vi === 0 ? RC.quasarLight : RC.faint}>
+                      {v.domain.length > 18 ? v.domain.slice(0, 17) + '…' : v.domain}
+                    </text>
+                    <rect x={labelW} y={by} width={barW} height={barH} rx={barH / 2} fill={RC.surfaceAlt} />
+                    <rect x={labelW} y={by} width={w} height={barH} rx={barH / 2} fill={color} />
+                    <text x={labelW + barW + 10} y={by + barH - 1} fontFamily={MONO} fontSize="9.5"
+                      fontWeight={vi === 0 ? '700' : '400'} fill={vi === 0 ? RC.ink : RC.muted}>
+                      {v.display}
+                    </text>
+                  </g>
+                )
+              })}
+            </svg>
+          </div>
         )
       })}
-    </svg>
+    </div>
   )
 }
 

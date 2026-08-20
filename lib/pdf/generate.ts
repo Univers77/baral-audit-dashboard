@@ -140,10 +140,11 @@ function safeBreakOffsets(section: HTMLElement, scale: number): number[] {
   const top = section.getBoundingClientRect().top
   const offsets = new Set<number>()
 
-  // Un nivel de hijos directos, y otro más dentro de tablas y listas, que es
-  // donde vive el contenido largo que conviene no cortar a media fila.
+  // `[data-break]` lo declara el propio informe: es la vía fiable, porque un
+  // bloque puede estar anidado a cualquier profundidad. Los selectores
+  // estructurales quedan como red de seguridad para lo que no lo marca.
   const blocks = Array.from(section.querySelectorAll<HTMLElement>(
-    ':scope > *, :scope > * > tbody > tr, :scope > * > * > tbody > tr, :scope > ol > li, :scope > * > ol > li',
+    '[data-break], :scope > *, :scope > * > tbody > tr, :scope > * > * > tbody > tr, :scope > ol > li, :scope > * > ol > li',
   ))
 
   for (const el of blocks) {
@@ -258,6 +259,9 @@ export async function generateAuditPdf(
           availablePx = Math.floor(PDF_HEIGHT_MM * pxPerMm)
           sliceHeightPx = sliceHeight(renderedPx, availablePx, canvas.height, breaks)
         }
+
+        // Un corte de altura cero o negativa dejaría el bucle sin avanzar.
+        sliceHeightPx = Math.max(1, Math.min(sliceHeightPx, canvas.height - renderedPx))
 
         const slice = document.createElement('canvas')
         slice.width = canvas.width

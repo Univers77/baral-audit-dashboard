@@ -60,7 +60,7 @@ function Card({ children, accent }: { children: React.ReactNode; accent?: string
 function FindingBlock({ f }: { f: AuditFinding }) {
   const tone = f.priority === 'P0' ? RC.pulsar : RC.ember
   return (
-    <div style={{
+    <div data-break style={{
       marginBottom: 13, padding: '13px 15px', breakInside: 'avoid',
       background: RC.surface, border: `1px solid ${RC.border}`, borderLeft: `3px solid ${tone}`, borderRadius: 6,
     }}>
