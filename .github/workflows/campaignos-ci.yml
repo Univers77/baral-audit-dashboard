@@ -1,0 +1,28 @@
+name: CampaignOS CI
+
+on:
+  pull_request:
+    paths:
+      - "app/campaignos/**"
+      - "app/api/campaignos/**"
+      - "scripts/campaignos-collector.mjs"
+      - "docs/CAMPAIGNOS_JEV_SOCIAL.md"
+      - ".env.campaignos.example"
+      - ".github/workflows/campaignos-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: node --check scripts/campaignos-collector.mjs
