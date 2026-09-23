@@ -1,0 +1,56 @@
+name: CampaignOS CI
+
+on:
+  pull_request:
+    paths:
+      - "app/campaignos/**"
+      - "app/api/campaignos/**"
+      - "components/campaignos/**"
+      - "lib/campaignos/**"
+      - "scripts/campaignos-collector.mjs"
+      - "docs/CAMPAIGNOS_JEV_SOCIAL.md"
+      - "docs/BARAL_CAMPAIGNOS_CODEX_OBSIDIAN_MASTER.md"
+      - "docs/*.md"
+      - "campaign_os/**"
+      - "tests/**"
+      - ".agents/**"
+      - "knowledge/obsidian-vault/**"
+      - "AGENTS.md"
+      - "pyproject.toml"
+      - "README.md"
+      - "CONTRIBUTING.md"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "eslint.config.mjs"
+      - ".env.campaignos.example"
+      - ".env.example"
+      - ".github/workflows/campaignos-ci.yml"
+      - ".github/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.31.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: node --check scripts/campaignos-collector.mjs
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: python -m unittest discover -s tests -v
+      - run: pnpm build

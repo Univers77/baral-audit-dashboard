@@ -1,0 +1,6 @@
+[project]
+name = "baral-campaign-os"
+version = "0.1.0"
+description = "Evidence-grounded campaign operations for Bolivia"
+requires-python = ">=3.11"
+dependencies = []
