@@ -18,7 +18,7 @@ No hay persistencia de campañas/evidencias/decisiones, Evidence/Claim Ledger, s
 - `pnpm audit` encontró vulnerabilidades críticas/altas en Next.js y transitivas. Next.js quedó actualizado a 16.3.6 y los overrides se limitan a versiones corregidas; audit completo y de producción deben permanecer limpios en CI.
 - La UI distingue comentarios sintéticos de evidencia y permite aprobar para estrategia, rechazar o pedir evidencia; esas decisiones son locales y se incluyen en el export.
 - La versión del master dentro del PR era más corta y difería del documento adjunto (3.017 líneas). Se reemplazó por la copia adjunta indicada como fuente de verdad.
-- El último CI remoto consultado falló con `Unable to locate executable file: pnpm`; no llegó a correr las validaciones. La copia local ahora instala pnpm con `pnpm/action-setup` antes del cache en `setup-node`, pero esa corrección todavía no está publicada ni revalidada por GitHub.
+- El CI remoto inicial (#2, antes de la corrección) falló con `Unable to locate executable file: pnpm`; no llegó a correr las validaciones. Se añadió instalación explícita de pnpm antes del cache de `setup-node`.
 
 ## Recomendación
 Trabajar en esta rama y mantener el módulo local hasta que exista autenticación, almacenamiento con controles de privacidad y validación de conectores. No fusionar ni desplegar sin revisión humana.
@@ -43,4 +43,6 @@ Trabajar en esta rama y mantener el módulo local hasta que exista autenticació
 - El workflow corregido usa pnpm/action-setup@v6, actions/checkout@v7, actions/setup-node@v7, actions/setup-python@v7, Node 24, audit de dependencias y CI con timeout.
 - `pnpm audit` y `pnpm audit --prod` pasan localmente sin vulnerabilidades conocidas. ESLint 10 no es compatible con los plugins React/Next actuales del repo y rompe en runtime; se conserva ESLint 9.39.5 hasta que los plugins soporten ESLint 10.
 - `pnpm exec eslint .` descubre ocho errores de hooks/immutability en el dashboard heredado. La CI actual valida el alcance de CampaignOS; esa deuda queda identificada y no se oculta como si todo el repo tuviera lint limpio.
-- El estado de GitHub queda pendiente de publicar esta revisión y esperar su nuevo CI. El merge sigue requiriendo revisión humana.
+- Publicación verificada: commit `4f6089eece909d9ff5ac7ef79c9817e0ea84807e` en `campaignos-jev-mvp`.
+- GitHub Actions CI #3 terminó `success` para ese SHA el 23-09-2026; ejecutó la validación de la rama publicada.
+- PR #1 sigue en Draft y sin reviews. Está listo para revisión de equipo; no se fusionó ni desplegó. El merge requiere revisión humana.
