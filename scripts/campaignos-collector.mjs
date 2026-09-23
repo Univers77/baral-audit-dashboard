@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const args = process.argv.slice(2);
 const get = (name, fallback = undefined) => {
@@ -20,6 +21,16 @@ const campaign = get("campaign", "BARAL CampaignOS research");
 const objective = get("objective", "Mapear objeciones, riesgos, dudas y señales de conversión.");
 const inputFile = get("input");
 const out = resolve(get("out", `campaignos-run-${Date.now()}.json`));
+const localSocai = resolve(dirname(fileURLToPath(import.meta.url)), "..", ".tools", "socai", "socai.exe");
+const socaiCommand = process.env.SOCAI_BIN || (existsSync(localSocai) ? localSocai : "socai");
+
+if (endpoint) {
+  let parsed;
+  try { parsed = new URL(endpoint); } catch { die("--endpoint debe ser una URL válida."); }
+  if (!["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname) || !["http:", "https:"].includes(parsed.protocol)) {
+    die("Por privacidad, el collector solo envía comentarios a un endpoint local. Usa el JSON local para el resto del flujo.");
+  }
+}
 
 function die(message) {
   console.error(`\n[CampaignOS Collector] ${message}\n`);
@@ -29,7 +40,7 @@ function die(message) {
 function run(command, commandArgs) {
   const result = spawnSync(command, commandArgs, {
     encoding: "utf8",
-    shell: process.platform === "win32",
+    shell: false,
     maxBuffer: 32 * 1024 * 1024,
   });
   if (result.error) die(result.error.message);
@@ -140,9 +151,9 @@ function buildSearchCommand() {
 }
 
 function fetchDetail(url) {
-  if (platform === "instagram") return parseJsonLoose(run("socai", ["instagram", "get-posts", "--post", url, "--num-comments", String(commentsPerPost), "--pretty"]));
-  if (platform === "linkedin") return parseJsonLoose(run("socai", ["linkedin", "get-posts", "--post", url, "--num-comments", String(commentsPerPost), "--pretty"]));
-  if (platform === "tiktok") return parseJsonLoose(run("socai", ["tiktok", "get-videos", "--video", url, "--pretty"]));
+  if (platform === "instagram") return parseJsonLoose(run(socaiCommand, ["instagram", "get-posts", "--post", url, "--num-comments", String(commentsPerPost), "--pretty"]));
+  if (platform === "linkedin") return parseJsonLoose(run(socaiCommand, ["linkedin", "get-posts", "--post", url, "--num-comments", String(commentsPerPost), "--pretty"]));
+  if (platform === "tiktok") return parseJsonLoose(run(socaiCommand, ["tiktok", "get-videos", "--video", url, "--pretty"]));
   return null;
 }
 
@@ -154,7 +165,7 @@ if (inputFile) {
   normalized = normalizeDeep(rawEvidence, platform === "file" ? "manual" : platform);
   if (!normalized.length && Array.isArray(rawEvidence?.comments)) normalized = rawEvidence.comments;
 } else {
-  const search = parseJsonLoose(run("socai", buildSearchCommand()));
+  const search = parseJsonLoose(run(socaiCommand, buildSearchCommand()));
   const urls = collectUrls(search).slice(0, Math.min(limit, 5));
   const details = [];
   for (const url of urls) {

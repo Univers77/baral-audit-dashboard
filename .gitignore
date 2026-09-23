@@ -19,3 +19,19 @@ node_modules
 # se regeneran solos y no deben viajar en el repositorio.
 cache/
 tsconfig.tsbuildinfo
+# CampaignOS local data and secrets
+.env
+.env.*
+!.env.example
+!.env.campaignos.example
+data/raw/
+data/normalized/private/
+data/cache/
+.tools/
+knowledge/obsidian-vault/.obsidian/workspace*
+knowledge/obsidian-vault/.trash/
+*.sqlite
+*.db
+secrets/
+__pycache__/
+*.py[cod]

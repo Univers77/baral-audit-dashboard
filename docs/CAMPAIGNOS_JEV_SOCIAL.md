@@ -7,7 +7,7 @@ Create a read-only social-intelligence layer for BARAL Campaigns OS that capture
 ## Architecture
 
 ```text
-LOCAL WINDOWS MACHINE                                VERCEL
+LOCAL WINDOWS MACHINE                                JEV API (OPT-IN)
 ┌──────────────────────────┐                    ┌──────────────────────────┐
 │ Chrome signed-in sessions│                    │ /campaignos dashboard   │
 │ Instagram/TikTok/LinkedIn│                    │ Human review console    │
@@ -19,9 +19,7 @@ LOCAL WINDOWS MACHINE                                VERCEL
 │ normalize + source URLs  │                                   │
 └────────────┬─────────────┘                                   │
              │ JSON                                            │
-             ├──────── local file / manual import ─────────────►│
-             │                                                 │
-             └──────── optional HTTPS POST ────────────────────►│
+             └──────── local file / manual import ──────────────┘
                                                                ▼
                                                     ┌──────────────────────┐
                                                     │ Jev System One       │
@@ -37,7 +35,8 @@ LOCAL WINDOWS MACHINE                                VERCEL
 ### Security boundary
 
 - Social login cookies remain in the operator's Chrome profile.
-- The Vercel app never needs Instagram/TikTok/LinkedIn credentials.
+- The app has no cloud collector path; social comments remain on the operator's machine.
+- If a local Jev key is configured, only platform and comment text after PII redaction are sent to Jev.
 - The collector is read-only.
 - Do not add CAPTCHA bypass, anti-bot evasion, credential extraction, automated liking/following/commenting, or access to non-public content without authorization.
 - Source URLs are preserved for review whenever socai returns them.
@@ -61,13 +60,15 @@ The analysis contract is omnichannel even when a collector adapter is not yet na
 
 Jev is a decision model, not a scraper and not a text generator. The API route asks bounded questions for each comment:
 
-- stance: supportive / neutral / skeptical / hostile
+- stance: supportive / neutral / skeptical / hostile (hostile is reserved for direct abuse/threat signals; sharp criticism stays skeptical)
 - primary intent
 - dominant objection
 - reputational risk score 0–4
-- probability that human review is required
+- review-triage score for whether a human should inspect the comment
 - commercial-intent probability
-- misinformation-verification probability
+- factual-claim verification-triage score, not a finding of falsity or intent
+
+The local preview heuristics are deliberately conservative: words such as “humo”, “estafa” or “mentira” can indicate a complaint or an allegation to verify, but do not by themselves establish abuse, misinformation, malicious intent or coordinated activity. Only explicit direct insult/threat patterns are tagged as an attack in preview mode. Preview output is for interface QA, not a production assessment; a reviewer must inspect the original context.
 
 The dashboard then aggregates those typed outputs deterministically. Response copy, strategic synthesis and final campaign decisions belong to a separate reasoning layer and/or the human operator.
 
@@ -90,13 +91,9 @@ Prerequisites:
 - Chrome with the social accounts you are authorized to use already signed in
 - current `socai` CLI
 
-Jev Social's published quick path can onboard socai and Jev:
+The official Windows `socai` CLI v0.6.0 is installed locally under `.tools/socai/` and the collector invokes that executable directly. It does not install or change PATH globally. No onboarding or account login is run automatically. Social accounts stay in the operator's Chrome profile.
 
-```powershell
-npx github:socai-io/jev-social#v0.1.5 onboard
-```
-
-Then run the BARAL collector from this repository:
+Run the BARAL collector from this repository:
 
 ```powershell
 node scripts/campaignos-collector.mjs `
@@ -120,26 +117,26 @@ LinkedIn:
 node scripts/campaignos-collector.mjs --platform linkedin --query "tema" --limit 10 --comments 20 --out ".\runs\linkedin.json"
 ```
 
-Optional direct evaluation against a deployed preview:
+Optional evaluation against the local dashboard:
 
 ```powershell
 node scripts/campaignos-collector.mjs `
   --platform instagram `
   --query "tema" `
-  --endpoint "https://YOUR-VERCEL-PREVIEW.vercel.app" `
+  --endpoint "http://127.0.0.1:3000" `
   --out ".\runs\research.json"
 ```
 
-This creates both the raw normalized run and an `-analyzed.json` file when the endpoint responds.
+This keeps the normalized run and analysis local. `--endpoint` rejects non-loopback hosts; never upload raw social comments to a cloud preview.
 
 ## Human workflow
 
 1. Define campaign and analysis objective.
 2. Run the local collector for each relevant source.
-3. Import the resulting JSON into `/campaignos` or POST it to the evaluate endpoint.
+3. Import the resulting JSON into the local `/campaignos` dashboard.
 4. Review high-risk, skeptical/hostile and high-human-probability comments first.
 5. Open the original source URL when available.
-6. Mark reviewed items manually.
+6. Mark each item approved for strategy, rejected, or requiring more evidence.
 7. Export the evidence package.
 8. Only then pass verified patterns into the Strategy / Red Team / Creative modules of CampaignOS.
 
@@ -152,6 +149,8 @@ This creates both the raw normalized run and an `-analyzed.json` file when the e
 - deterministic preview fallback
 - local socai collector
 - explicit Human Gate
+- local-only evaluation endpoint
+- PII redaction before optional Jev requests
 
 ### Phase 1 — evidence store
 - Postgres/Supabase or another low-cost append-only store
